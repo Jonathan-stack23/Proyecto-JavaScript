@@ -1,0 +1,15 @@
+[tool.pyrefly]
+python-interpreter-path = ".venv/Scripts/python.exe"
+search-path = [
+    "Backend",
+    "Backend/app",
+    ".venv/Lib/site-packages",
+    "Backend/venv/Lib/site-packages"
+]
+site-package-path = [
+    ".venv/Lib/site-packages",
+    "Backend/venv/Lib/site-packages"
+]
+
+[tool.pyrefly.errors]
+missing-import = "ignore"

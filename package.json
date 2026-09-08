@@ -1,0 +1,13 @@
+{
+  "name": "mitienda-proyecto-sena",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Proyecto MiTienda - SENA Jonathan Martinez",
+  "scripts": {
+    "test:postman": "node run_postman_suite.js",
+    "test": "node run_postman_suite.js"
+  },
+  "keywords": ["postman", "newman", "tests", "express", "react", "mysql"],
+  "author": "Jonathan Martinez",
+  "license": "ISC"
+}

@@ -1,0 +1,22 @@
+{
+  "include": [
+    "Backend/app"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "Backend/venv",
+    ".venv"
+  ],
+  "venvPath": "Backend",
+  "venv": "venv",
+  "extraPaths": [
+    "Backend",
+    "Backend/app"
+  ],
+  "typeCheckingMode": "off",
+  "reportGeneralTypeIssues": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportArgumentType": "none",
+  "reportOptionalMemberAccess": "none"
+}

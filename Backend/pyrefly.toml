@@ -1,0 +1,12 @@
+python-interpreter-path = "venv/Scripts/python.exe"
+search-path = [
+    ".",
+    "app",
+    "venv/Lib/site-packages"
+]
+site-package-path = [
+    "venv/Lib/site-packages"
+]
+
+[errors]
+missing-import = "ignore"
