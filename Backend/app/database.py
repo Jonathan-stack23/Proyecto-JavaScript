@@ -2,7 +2,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 load_dotenv()
 
@@ -14,7 +14,6 @@ DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_NAME = os.getenv("DB_NAME", "mitienda_db")
 
-# Si se provee DATABASE_URL se usa, sino se arma para MySQL
 env_db_url = os.getenv("DATABASE_URL")
 if env_db_url:
     default_mysql_url = env_db_url
@@ -22,17 +21,14 @@ else:
     password_part = f":{DB_PASSWORD}" if DB_PASSWORD else ""
     default_mysql_url = f"mysql+pymysql://{DB_USER}{password_part}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# Función para intentar conectar con MySQL o utilizar SQLite de respaldo
 def get_working_engine():
     try:
-        # Intentar conectar al servidor MySQL (con timeout corto para no bloquear si no está activo)
         test_engine = create_engine(default_mysql_url, pool_pre_ping=True, connect_args={"connect_timeout": 2})
         with test_engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info(f"[DB] Conexion exitosa a MySQL: {DB_NAME} en {DB_HOST}:{DB_PORT}")
         return test_engine
     except Exception as ex:
-        # Si MySQL falla porque la BD no existe, intentar crearla
         try:
             password_part = f":{DB_PASSWORD}" if DB_PASSWORD else ""
             server_url = f"mysql+pymysql://{DB_USER}{password_part}@{DB_HOST}:{DB_PORT}"
@@ -48,7 +44,6 @@ def get_working_engine():
         except Exception:
             pass
 
-        # Fallback a SQLite local si el servidor MySQL no está iniciado
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         bd_dir = os.path.join(base_dir, "basedatos")
         os.makedirs(bd_dir, exist_ok=True)
@@ -61,7 +56,9 @@ def get_working_engine():
 
 engine = get_working_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 def get_db():
     db = SessionLocal()

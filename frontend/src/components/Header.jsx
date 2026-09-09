@@ -129,22 +129,7 @@ function Header() {
             <div className="hidden md:flex items-center gap-3">
               {isAuthenticated && user ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 hidden xl:inline">
-                    Bienvenido, <strong className="text-accent">{user.nombre}</strong>
-                  </span>
                   <UserMenuDropdown />
-                  <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-100 transition-colors"
-                    title="Cerrar sesión"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                      <polyline points="16 17 21 12 16 7"></polyline>
-                      <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                    <span>Cerrar sesión</span>
-                  </button>
                 </div>
               ) : (
                 <Link
