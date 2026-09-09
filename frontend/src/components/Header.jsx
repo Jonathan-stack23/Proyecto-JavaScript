@@ -169,7 +169,7 @@ function Header() {
         </div>
       </div>
 
-      {/* MenÃº MÃ³vil */}
+      {/* Menú Móvil */}
       {menuAbierto && (
         <div className="md:hidden border-t border-gray-100 bg-white">
           <div className="px-4 py-4 space-y-1.5">

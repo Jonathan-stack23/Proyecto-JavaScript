@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart, formatPrice } from '../context/CartContext';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { getProductImage } from '../utils/productImages';
@@ -6,11 +6,11 @@ import api from '../services/api';
 
 const PRODUCTOS_DEFAULT = [
   { id: 1, nombre: 'Laptop HP Pavilion 15"', precio: 3599000, categoria: 'Computadores', descripcion: 'Laptop de alto rendimiento con procesador i7, 16GB RAM y 512GB SSD.', stock: 15, imagen_url: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=500&h=600&q=80' },
-  { id: 2, nombre: 'Smartphone Samsung Galaxy A54', precio: 1899000, categoria: 'Celulares', descripcion: 'Pantalla AMOLED 6.5", cÃ¡mara 108MP, baterÃ­a de 5000mAh, 128GB.', stock: 25, imagen_url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=500&h=600&q=80' },
-  { id: 3, nombre: 'Auriculares InalÃ¡mbricos Bluetooth', precio: 299000, categoria: 'Accesorios', descripcion: 'CancelaciÃ³n activa de ruido, 30 horas de autonomÃ­a inalÃ¡mbrica.', stock: 50, imagen_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&h=600&q=80' },
+  { id: 2, nombre: 'Smartphone Samsung Galaxy A54', precio: 1899000, categoria: 'Celulares', descripcion: 'Pantalla AMOLED 6.5", cámara 108MP, batería de 5000mAh, 128GB.', stock: 25, imagen_url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=500&h=600&q=80' },
+  { id: 3, nombre: 'Auriculares Inalámbricos Bluetooth', precio: 299000, categoria: 'Accesorios', descripcion: 'Cancelación activa de ruido, 30 horas de autonomía inalámbrica.', stock: 50, imagen_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&h=600&q=80' },
   { id: 4, nombre: 'Monitor LG 27" Full HD IPS', precio: 899000, categoria: 'Monitores', descripcion: 'Pantalla Full HD IPS, bordes ultra delgados, 75Hz con FreeSync.', stock: 20, imagen_url: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=500&h=600&q=80' },
-  { id: 5, nombre: 'Teclado MecÃ¡nico RGB Gamer', precio: 459000, categoria: 'Accesorios', descripcion: 'Switches mecÃ¡nicos, retroiluminaciÃ³n RGB configurable, anti-ghosting.', stock: 30, imagen_url: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=500&h=600&q=80' },
-  { id: 6, nombre: 'Mouse Gamer RGB 16000 DPI', precio: 249000, categoria: 'Accesorios', descripcion: 'Sensor Ã³ptico de alta precisiÃ³n, peso regulable, iluminaciÃ³n RGB.', stock: 40, imagen_url: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=500&h=600&q=80' },
+  { id: 5, nombre: 'Teclado Mecánico RGB Gamer', precio: 459000, categoria: 'Accesorios', descripcion: 'Switches mecánicos, retroiluminación RGB configurable, anti-ghosting.', stock: 30, imagen_url: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=500&h=600&q=80' },
+  { id: 6, nombre: 'Mouse Gamer RGB 16000 DPI', precio: 249000, categoria: 'Accesorios', descripcion: 'Sensor óptico de alta precisión, peso regulable, iluminación RGB.', stock: 40, imagen_url: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=500&h=600&q=80' },
 ];
 
 const FALLBACK_PRODUCTO_IMG =
@@ -80,13 +80,13 @@ function Products() {
         <div className="absolute -top-32 -right-24 w-96 h-96 rounded-full bg-purple-200/40 blur-3xl -z-10"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <span className="inline-block px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-gray-100 shadow-sm text-accent mb-4">
-            CatÃ¡logo Oficial MiTienda
+            Catálogo Oficial MiTienda
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-text-heading mb-4">
             Hardware & Accesorios Premium
           </h2>
           <p className="text-text max-w-2xl mx-auto text-base md:text-lg">
-            Encuentra tecnologÃ­a de Ãºltima generaciÃ³n con garantÃ­a directa, envÃ­o rÃ¡pido y pagos seguros.
+            Encuentra tecnología de última generación con garantía directa, envío rápido y pagos seguros.
           </p>
 
           {/* Buscador */}
@@ -96,7 +96,7 @@ function Products() {
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Buscar por nombre o descripciÃ³n..."
+                placeholder="Buscar por nombre o descripción..."
                 className="w-full px-5 py-3.5 pl-12 rounded-2xl bg-white border border-gray-200 shadow-sm focus:border-accent focus:ring-2 focus:ring-accent-light outline-none text-sm"
               />
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" className="absolute left-4 top-4">
@@ -108,7 +108,7 @@ function Products() {
                   onClick={() => setBusqueda('')}
                   className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 text-xs font-bold"
                 >
-                  âœ•
+                  ✕
                 </button>
               )}
             </div>
@@ -116,7 +116,7 @@ function Products() {
         </div>
       </section>
 
-      {/* Filtro de categorÃ­as */}
+      {/* Filtro de categorías */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
           {categorias.map((cat) => (
@@ -140,7 +140,7 @@ function Products() {
         {cargando ? (
           <div className="text-center py-20">
             <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500 text-sm">Cargando catÃ¡logo...</p>
+            <p className="text-gray-500 text-sm">Cargando catálogo...</p>
           </div>
         ) : productosFiltrados.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 max-w-lg mx-auto shadow-sm">
@@ -151,7 +151,7 @@ function Products() {
               </svg>
             </div>
             <h3 className="font-bold text-text-heading text-lg mb-1">No se encontraron productos</h3>
-            <p className="text-xs text-gray-400 mb-4">Prueba cambiando los tÃ©rminos de bÃºsqueda o de categorÃ­a.</p>
+            <p className="text-xs text-gray-400 mb-4">Prueba cambiando los términos de búsqueda o de categoría.</p>
             <button
               onClick={() => {
                 setBusqueda('');
@@ -198,13 +198,13 @@ function Products() {
                       }}
                     />
 
-                    {/* Overlay botÃ³n ver detalles */}
+                    {/* Overlay botón ver detalles */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-5">
                       <button
                         onClick={() => abrirModalDetalles(p)}
                         className="px-5 py-2.5 rounded-xl bg-white text-text-heading text-sm font-bold shadow-lg translate-y-4 group-hover:translate-y-0 transition-transform duration-300 hover:bg-accent hover:text-white"
                       >
-                        ðŸ‘ï¸ Ver detalles
+                        👁️ Ver detalles
                       </button>
                     </div>
                   </div>
@@ -212,7 +212,7 @@ function Products() {
                   <div className="p-6 flex flex-col flex-1">
                     <h3 className="text-lg font-bold text-text-heading mb-2 line-clamp-1">{p.nombre}</h3>
                     <p className="text-sm text-text mb-5 leading-relaxed flex-1 line-clamp-2">
-                      {p.descripcion || 'Producto tecnolÃ³gico de alta calidad.'}
+                      {p.descripcion || 'Producto tecnológico de alta calidad.'}
                     </p>
 
                     <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-100">
@@ -222,7 +222,7 @@ function Products() {
                       </div>
 
                       <div className="flex gap-2">
-                        {/* BotÃ³n ver detalles directo */}
+                        {/* Botón ver detalles directo */}
                         <button
                           onClick={() => abrirModalDetalles(p)}
                           className="p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
@@ -234,7 +234,7 @@ function Products() {
                           </svg>
                         </button>
 
-                        {/* BotÃ³n agregar al carrito */}
+                        {/* Botón agregar al carrito */}
                         <button
                           onClick={() => handleAgregar(p)}
                           disabled={stock <= 0}
@@ -249,7 +249,7 @@ function Products() {
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                               </svg>
-                              Â¡Listo!
+                              ¡Listo!
                             </>
                           ) : (
                             <>

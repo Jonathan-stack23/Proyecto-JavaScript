@@ -265,7 +265,7 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/recuperar-contrasena" element={<RecoverPage />} />
 
-      {/* Rutas PÃºblicas */}
+      {/* Rutas Públicas */}
       <Route
         path="/"
         element={

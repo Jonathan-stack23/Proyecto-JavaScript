@@ -21,19 +21,19 @@ function Login({ onNavigateRecover }) {
   const [serverError, setServerError] = useState('')
 
   const validarEmail = (email) => {
-    if (!email.trim()) return 'El correo electrÃ³nico es obligatorio'
+    if (!email.trim()) return 'El correo electrónico es obligatorio'
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-    if (!emailRegex.test(email)) return 'Ingresa un correo electrÃ³nico vÃ¡lido'
+    if (!emailRegex.test(email)) return 'Ingresa un correo electrónico válido'
     if (email.length > 100) return 'El correo no puede exceder 100 caracteres'
     return ''
   }
 
   const validarPassword = (password) => {
-    if (!password) return 'La contraseÃ±a es obligatoria'
-    if (password.length < 6) return 'La contraseÃ±a debe tener al menos 6 caracteres'
-    if (password.length > 50) return 'La contraseÃ±a no puede exceder 50 caracteres'
+    if (!password) return 'La contraseña es obligatoria'
+    if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres'
+    if (password.length > 50) return 'La contraseña no puede exceder 50 caracteres'
     const forbiddenRegex = /[<>'"`;]/
-    if (forbiddenRegex.test(password)) return 'La contraseÃ±a contiene caracteres no permitidos'
+    if (forbiddenRegex.test(password)) return 'La contraseña contiene caracteres no permitidos'
     return ''
   }
 
@@ -93,7 +93,7 @@ function Login({ onNavigateRecover }) {
     } catch (error) {
       console.error('Login error:', error)
       setServerError(
-        error.response?.data?.message || 'Error al iniciar sesiÃ³n. IntÃ©ntalo nuevamente.'
+        error.response?.data?.message || 'Error al iniciar sesión. Inténtalo nuevamente.'
       )
     } finally {
       setIsSubmitting(false)
@@ -129,10 +129,10 @@ function Login({ onNavigateRecover }) {
               </div>
               <div className="text-left">
                 <h1 className="text-3xl font-extrabold text-white leading-none">MiTienda</h1>
-                <p className="text-xs text-white/80 mt-0.5">TecnologÃ­a & mÃ¡s</p>
+                <p className="text-xs text-white/80 mt-0.5">Tecnología & más</p>
               </div>
             </div>
-            <h2 className="text-xl font-semibold text-white/90 mt-6 mb-1">Iniciar SesiÃ³n</h2>
+            <h2 className="text-xl font-semibold text-white/90 mt-6 mb-1">Iniciar Sesión</h2>
             <p className="text-white/70 text-sm">Bienvenido de nuevo</p>
           </div>
 
@@ -149,7 +149,7 @@ function Login({ onNavigateRecover }) {
             )}
 
             <Input
-              label="Correo ElectrÃ³nico"
+              label="Correo Electrónico"
               type="email"
               name="email"
               value={formData.email}
@@ -163,13 +163,13 @@ function Login({ onNavigateRecover }) {
             />
 
             <Input
-              label="ContraseÃ±a"
+              label="Contraseña"
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="Ingresa tu contraseÃ±a"
+              placeholder="Ingresa tu contraseña"
               error={touched.password ? errors.password : ''}
               icon={passwordIcon}
               maxLength={50}
@@ -194,7 +194,7 @@ function Login({ onNavigateRecover }) {
                 onClick={onNavigateRecover}
                 className="text-sm text-accent hover:text-accent-dark font-medium transition-colors"
               >
-                Â¿Olvidaste tu contraseÃ±a?
+                ¿Olvidaste tu contraseña?
               </button>
             </div>
 
@@ -213,7 +213,7 @@ function Login({ onNavigateRecover }) {
                       <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
                     </path>
                   </svg>
-                  Iniciando sesiÃ³n...
+                  Iniciando sesión...
                 </>
               ) : (
                 <>
@@ -222,7 +222,7 @@ function Login({ onNavigateRecover }) {
                     <polyline points="10 17 15 12 10 7"></polyline>
                     <line x1="15" y1="12" x2="3" y2="12"></line>
                   </svg>
-                  Iniciar SesiÃ³n
+                  Iniciar Sesión
                 </>
               )}
             </Button>
@@ -240,7 +240,7 @@ function Login({ onNavigateRecover }) {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600 mb-3">
-                Â¿AÃºn no tienes una cuenta?
+                ¿Aún no tienes una cuenta?
               </p>
               <Button
                 type="button"
