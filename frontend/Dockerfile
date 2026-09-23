@@ -33,11 +33,12 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Copiar artefactos de build del Stage 1
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Railway inyecta $PORT dinámicamente; por defecto usamos 80
-EXPOSE 80
+# Railway inyecta $PORT dinamicamente — no usar EXPOSE estatico
+# envsubst reemplaza ${PORT} en nginx.conf antes de arrancar Nginx
 
 # Health check del contenedor Nginx
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD wget -qO- http://localhost/health || exit 1
+    CMD wget -qO- http://localhost:${PORT:-80}/health || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Arrancar Nginx con el puerto correcto inyectado por Railway
+CMD ["/bin/sh", "-c", "envsubst '$PORT' < /etc/nginx/nginx.conf > /tmp/nginx_railway.conf && nginx -c /tmp/nginx_railway.conf -g 'daemon off;'"]
