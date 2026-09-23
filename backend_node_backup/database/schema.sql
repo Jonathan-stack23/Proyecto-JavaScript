@@ -221,6 +221,23 @@ CREATE TABLE IF NOT EXISTS pedido_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
+-- TABLA: codigos_recuperacion
+-- Almacena códigos de verificación de 6 dígitos para recuperación
+-- de contraseña. Cada código expira después de 15 minutos y solo
+-- puede usarse una vez.
+-- ============================================
+CREATE TABLE IF NOT EXISTS codigos_recuperacion (
+  id            INT PRIMARY KEY AUTO_INCREMENT,
+  email         VARCHAR(100) NOT NULL,
+  codigo        VARCHAR(10) NOT NULL,
+  expira_en     DATETIME NOT NULL,
+  usado         BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_codigos_email (email),
+  INDEX idx_codigos_codigo (codigo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================
 -- TABLA: citas_servicios
 -- ============================================
 CREATE TABLE IF NOT EXISTS citas_servicios (

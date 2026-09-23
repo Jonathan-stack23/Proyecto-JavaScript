@@ -62,7 +62,7 @@ backend/
 En la terminal de Windows:
 ```bash
 cd backend
-venv\Scripts\activate
+..\.venv\Scripts\Activate.ps1
 ```
 
 ### Paso 2: Instalar Dependencias

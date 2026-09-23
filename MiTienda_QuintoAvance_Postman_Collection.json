@@ -1,0 +1,553 @@
+{
+  "info": {
+    "_postman_id": "b78d234a-9c41-4712-a1f9-8e7c10b45d9e",
+    "name": "MiTienda - Quinto Avance Suite (FastAPI + React + SQL + IA)",
+    "description": "Colección completa de pruebas de endpoints para el Quinto Avance (SENA Ficha 3406204): Ventas, Facturación en PDF, Reportes diarios en PDF y Excel, Dashboards Analíticos, Módulo de PQR y Chatbot con IA.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Autenticación JWT",
+      "item": [
+        {
+          "name": "01 - Login Administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Token JWT recibido\", function () { pm.expect(data).to.have.property('token'); });",
+                  "if (data.token) { pm.environment.set(\"token_admin\", data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@mitienda.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "02 - Login Cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "if (data.token) { pm.environment.set(\"token_cliente\", data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cliente@mitienda.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Gestión Comercial y Ventas (Req 1, 2, 3)",
+      "item": [
+        {
+          "name": "01 - Registrar Venta Comercial (Productos y Servicios)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Venta creada exitosamente (201)\", function () { pm.response.to.have.status(201); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Estructura de venta y factura generada\", function () {",
+                  "    pm.expect(data.ok).to.eql(true);",
+                  "    pm.expect(data.venta).to.have.property('numero_venta');",
+                  "    pm.expect(data.venta).to.have.property('numero_factura');",
+                  "});",
+                  "if (data.venta && data.venta.id) { pm.environment.set(\"ultima_venta_id\", data.venta.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_admin}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_nombre\": \"Carlos Gomez\",\n  \"cliente_documento\": \"1020304050\",\n  \"cliente_email\": \"carlos.gomez@example.com\",\n  \"cliente_telefono\": \"3009876543\",\n  \"direccion_entrega\": \"Carrera 15 # 85-30, Bogotá\",\n  \"ciudad\": \"Bogotá\",\n  \"metodo_pago\": \"transferencia\",\n  \"descuento\": 5000.0,\n  \"notas\": \"Prueba de venta comercial Quinto Avance\",\n  \"items\": [\n    {\n      \"tipo_item\": \"producto\",\n      \"producto_id\": 1,\n      \"nombre_item\": \"Teclado Mecánico RGB\",\n      \"precio_unitario\": 180000.0,\n      \"cantidad\": 1,\n      \"descuento\": 0.0\n    },\n    {\n      \"tipo_item\": \"servicio\",\n      \"servicio_id\": 1,\n      \"nombre_item\": \"Mantenimiento Preventivo PC\",\n      \"precio_unitario\": 65000.0,\n      \"cantidad\": 1,\n      \"descuento\": 0.0\n    }\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/ventas", "host": ["{{baseUrl}}"], "path": ["api", "ventas"] }
+          }
+        },
+        {
+          "name": "02 - Consultar Historial de Ventas General",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Lista de ventas presente\", function () { pm.expect(data.ventas).to.be.an('array'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/ventas", "host": ["{{baseUrl}}"], "path": ["api", "ventas"] }
+          }
+        },
+        {
+          "name": "03 - Consultar Ventas con Filtros (Estado y Valor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Filtro aplicado correctamente\", function () { pm.expect(data.ok).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/ventas?estado=completada&valor_min=50000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ventas"],
+              "query": [
+                { "key": "estado", "value": "completada" },
+                { "key": "valor_min", "value": "50000" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Módulo de Facturación (Req 7, 8, 9)",
+      "item": [
+        {
+          "name": "01 - Consultar Facturas con Filtros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Facturas retornadas\", function () { pm.expect(data.facturas).to.be.an('array'); });",
+                  "if (data.facturas && data.facturas.length > 0) { pm.environment.set(\"factura_id\", data.facturas[0].id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/facturas", "host": ["{{baseUrl}}"], "path": ["api", "facturas"] }
+          }
+        },
+        {
+          "name": "02 - Obtener Detalle de Factura por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Factura válida\", function () { pm.expect(data.factura).to.have.property('numero_factura'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/facturas/{{factura_id}}", "host": ["{{baseUrl}}"], "path": ["api", "facturas", "{{factura_id}}"] }
+          }
+        },
+        {
+          "name": "03 - Descargar Factura Comercial en PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Tipo de contenido es application/pdf\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/facturas/{{factura_id}}/pdf", "host": ["{{baseUrl}}"], "path": ["api", "facturas", "{{factura_id}}", "pdf"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Reportes de Ventas en PDF y Excel (Req 4, 5, 6)",
+      "item": [
+        {
+          "name": "01 - Reporte Diario de Ventas (JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Resumen consolidado presente\", function () {",
+                  "    pm.expect(data.reporte).to.have.property('resumen');",
+                  "    pm.expect(data.reporte).to.have.property('total_general');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reportes/ventas/diario", "host": ["{{baseUrl}}"], "path": ["api", "reportes", "ventas", "diario"] }
+          }
+        },
+        {
+          "name": "02 - Exportar Reporte Diario en PDF (ReportLab)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"MimeType application/pdf\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reportes/ventas/pdf", "host": ["{{baseUrl}}"], "path": ["api", "reportes", "ventas", "pdf"] }
+          }
+        },
+        {
+          "name": "03 - Exportar Reporte Diario en Excel (openpyxl .xlsx)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Archivo Excel retornado\", function () {",
+                  "    var ctype = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "    pm.expect(ctype.includes(\"spreadsheetml\") || ctype.includes(\"octet-stream\")).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/reportes/ventas/excel", "host": ["{{baseUrl}}"], "path": ["api", "reportes", "ventas", "excel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Dashboards y Analítica (Req 10, 11, 12, 13, 15)",
+      "item": [
+        {
+          "name": "01 - Estadísticas Globales del Dashboard (/stats)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"KPIs requeridos presentes\", function () {",
+                  "    pm.expect(data.stats).to.have.property('total_usuarios');",
+                  "    pm.expect(data.stats).to.have.property('total_productos');",
+                  "    pm.expect(data.stats).to.have.property('total_servicios');",
+                  "    pm.expect(data.stats).to.have.property('total_ventas');",
+                  "    pm.expect(data.stats).to.have.property('facturacion_total');",
+                  "    pm.expect(data.stats).to.have.property('pqr_totales');",
+                  "    pm.expect(data.stats).to.have.property('pqr_pendientes');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/dashboard/stats", "host": ["{{baseUrl}}"], "path": ["api", "dashboard", "stats"] }
+          }
+        },
+        {
+          "name": "02 - Series Temporales para Gráficos (/charts)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Series de barras y líneas disponibles\", function () {",
+                  "    pm.expect(data.ventas_por_periodo).to.be.an('array');",
+                  "    pm.expect(data.ingresos_por_periodo).to.be.an('array');",
+                  "    pm.expect(data.ingresos_acumulados).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/charts?dias=14",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "charts"],
+              "query": [{ "key": "dias", "value": "14" }]
+            }
+          }
+        },
+        {
+          "name": "03 - Estadísticas Diferenciadas para Cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Métricas de cliente personalizadas\", function () {",
+                  "    pm.expect(data.rol).to.eql('Cliente');",
+                  "    pm.expect(data.stats).to.have.property('total_compras');",
+                  "    pm.expect(data.stats).to.have.property('total_gastado');",
+                  "    pm.expect(data.stats).to.have.property('pqr_radicadas');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_cliente}}" }],
+            "url": { "raw": "{{baseUrl}}/api/dashboard/stats", "host": ["{{baseUrl}}"], "path": ["api", "dashboard", "stats"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Módulo de PQR (Req 16)",
+      "item": [
+        {
+          "name": "01 - Radicar Solicitud PQR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"PQR radicada con código 201\", function () { pm.response.to.have.status(201); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Consecutivo oficial asignado (PQR-YYYY-XXXX)\", function () {",
+                  "    pm.expect(data.pqr.numero_radicado).to.match(/^PQR-\\d{4}-\\d{4}$/);",
+                  "});",
+                  "if (data.pqr) {",
+                  "    pm.environment.set(\"pqr_id\", data.pqr.id);",
+                  "    pm.environment.set(\"pqr_radicado\", data.pqr.numero_radicado);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cliente_nombre\": \"Laura Martinez\",\n  \"cliente_email\": \"laura.martinez@example.com\",\n  \"cliente_telefono\": \"3115554433\",\n  \"tipo\": \"reclamo\",\n  \"asunto\": \"Demora en entrega de accesorios\",\n  \"descripcion\": \"Mi pedido realizado hace dos días aún no registra guía de rastreo. Solicito actualización.\",\n  \"prioridad\": \"media\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pqr", "host": ["{{baseUrl}}"], "path": ["api", "pqr"] }
+          }
+        },
+        {
+          "name": "02 - Listar PQR (Administrador y Empleado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Listado y resumen presentes\", function () { pm.expect(data.pqrs).to.be.an('array'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token_admin}}" }],
+            "url": { "raw": "{{baseUrl}}/api/pqr", "host": ["{{baseUrl}}"], "path": ["api", "pqr"] }
+          }
+        },
+        {
+          "name": "03 - Consultar PQR por Radicado Público",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"PQR recuperada por código\", function () { pm.expect(data.pqr.numero_radicado).to.eql(pm.environment.get(\"pqr_radicado\")); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/pqr/radicado/{{pqr_radicado}}", "host": ["{{baseUrl}}"], "path": ["api", "pqr", "radicado", "{{pqr_radicado}}"] }
+          }
+        },
+        {
+          "name": "04 - Responder PQR y Actualizar Estado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Estado actualizado a respondida\", function () { pm.expect(data.pqr.estado).to.eql('respondida'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_admin}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"respuesta\": \"Estimada Laura, hemos verificado y tu pedido ya fue entregado a la transportadora con número de guía 987654321. Recibirás tu paquete hoy.\",\n  \"estado\": \"respondida\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/pqr/{{pqr_id}}/responder", "host": ["{{baseUrl}}"], "path": ["api", "pqr", "{{pqr_id}}", "responder"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Chatbot con Inteligencia Artificial (Req 17, 18)",
+      "item": [
+        {
+          "name": "01 - Chatbot Consulta sobre Catálogo y Productos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Respuesta contextual recibida\", function () {",
+                  "    pm.expect(data.ok).to.eql(true);",
+                  "    pm.expect(data.reply.length).to.be.above(10);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"¿Qué productos de computadores y periféricos tienen disponibles?\",\n  \"session_id\": \"postman-session-test-01\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/chatbot/message", "host": ["{{baseUrl}}"], "path": ["api", "chatbot", "message"] }
+          }
+        },
+        {
+          "name": "02 - Chatbot Consulta Estado de Radicado PQR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () { pm.response.to.have.status(200); });",
+                  "var data = pm.response.json();",
+                  "pm.test(\"Bot detecta y responde estado del radicado\", function () {",
+                  "    pm.expect(data.reply).to.include(pm.environment.get(\"pqr_radicado\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hola, quiero saber el estado de mi radicado {{pqr_radicado}}\",\n  \"session_id\": \"postman-session-test-02\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/chatbot/message", "host": ["{{baseUrl}}"], "path": ["api", "chatbot", "message"] }
+          }
+        }
+      ]
+    }
+  ]
+}

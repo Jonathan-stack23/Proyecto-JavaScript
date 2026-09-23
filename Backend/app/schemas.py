@@ -94,6 +94,18 @@ class PasswordRecoveryRequest(BaseModel):
     email: EmailStr
     newPassword: str = Field(..., min_length=6)
 
+class RecuperarSolicitarCodigo(BaseModel):
+    email: EmailStr
+
+class RecuperarVerificarCodigo(BaseModel):
+    email: EmailStr
+    codigo: str = Field(..., min_length=4, max_length=10)
+
+class RecuperarResetPassword(BaseModel):
+    email: EmailStr
+    codigo: str = Field(..., min_length=4, max_length=10)
+    newPassword: str = Field(..., min_length=6)
+
 class EstadoUpdateRequest(BaseModel):
     estado: str = Field(..., pattern="^(activo|inactivo|en revision|revisado|hecho|cancelado)$")
 
@@ -222,3 +234,191 @@ class CitaCreate(BaseModel):
     hora_cita: str
     direccion: Optional[str] = None
     notas: Optional[str] = None
+
+
+# =============================================================================
+# ESQUEMAS QUINTO AVANCE: VENTAS, FACTURAS, PQR, CHATBOT Y DASHBOARD
+# =============================================================================
+
+# ----------------- VENTAS -----------------
+
+class ItemVentaCreate(BaseModel):
+    tipo_item: str = Field(default="producto", description="'producto' o 'servicio'")
+    producto_id: Optional[int] = None
+    servicio_id: Optional[int] = None
+    nombre_item: str
+    precio_unitario: float = Field(..., ge=0)
+    cantidad: int = Field(default=1, ge=1)
+    descuento: Optional[float] = Field(default=0.0, ge=0)
+
+class VentaCreate(BaseModel):
+    cliente_id: Optional[int] = None
+    cliente_nombre: str
+    cliente_documento: Optional[str] = "222222222222"
+    cliente_email: EmailStr
+    cliente_telefono: str
+    direccion_entrega: Optional[str] = None
+    ciudad: Optional[str] = "Bogotá"
+    metodo_pago: str = "efectivo"
+    descuento: Optional[float] = 0.0
+    impuestos: Optional[float] = 0.0
+    notas: Optional[str] = None
+    items: List[ItemVentaCreate]
+
+class DetalleVentaResponse(BaseModel):
+    id: int
+    tipo_item: str
+    producto_id: Optional[int] = None
+    servicio_id: Optional[int] = None
+    nombre_item: str
+    precio_unitario: float
+    cantidad: int
+    descuento: float
+    subtotal: float
+
+    class Config:
+        from_attributes = True
+
+class VentaResponse(BaseModel):
+    id: int
+    numero_venta: str
+    cliente_id: Optional[int] = None
+    usuario_id: Optional[int] = None
+    cliente_nombre: str
+    cliente_documento: Optional[str] = None
+    cliente_email: str
+    cliente_telefono: str
+    direccion_entrega: Optional[str] = None
+    ciudad: Optional[str] = None
+    metodo_pago: str
+    subtotal: float
+    descuento: float
+    impuestos: float
+    total: float
+    estado: str
+    notas: Optional[str] = None
+    fecha_venta: Optional[datetime] = None
+    detalles: List[DetalleVentaResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ----------------- FACTURAS -----------------
+
+class FacturaCreate(BaseModel):
+    venta_id: int
+    cliente_documento: Optional[str] = None
+    cliente_direccion: Optional[str] = None
+    ciudad: Optional[str] = "Bogotá"
+
+class DetalleFacturaResponse(BaseModel):
+    id: int
+    tipo_item: str
+    nombre_item: str
+    precio_unitario: float
+    cantidad: int
+    subtotal: float
+
+    class Config:
+        from_attributes = True
+
+class FacturaResponse(BaseModel):
+    id: int
+    numero_factura: str
+    venta_id: int
+    cliente_id: Optional[int] = None
+    cliente_nombre: str
+    cliente_documento: str
+    cliente_email: str
+    cliente_telefono: Optional[str] = None
+    cliente_direccion: Optional[str] = None
+    ciudad: Optional[str] = None
+    subtotal: float
+    impuestos: float
+    descuento: float
+    total: float
+    metodo_pago: str
+    estado: str
+    fecha_emision: Optional[datetime] = None
+    detalles: List[DetalleFacturaResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ----------------- PQR -----------------
+
+class PQRCreate(BaseModel):
+    tipo: str = Field(..., description="'peticion', 'queja', 'reclamo' o 'sugerencia'")
+    asunto: str = Field(..., min_length=4, max_length=150)
+    descripcion: str = Field(..., min_length=10)
+    prioridad: Optional[str] = "media"
+    cliente_nombre: Optional[str] = None
+    cliente_email: Optional[EmailStr] = None
+    cliente_telefono: Optional[str] = None
+
+class PQRRespuesta(BaseModel):
+    respuesta: str = Field(..., min_length=5)
+    estado: str = Field(default="respondida", description="'en proceso', 'respondida', 'cerrada'")
+
+class PQRResponse(BaseModel):
+    id: int
+    numero_radicado: str
+    usuario_id: Optional[int] = None
+    cliente_nombre: str
+    cliente_email: str
+    cliente_telefono: Optional[str] = None
+    tipo: str
+    asunto: str
+    descripcion: str
+    estado: str
+    prioridad: str
+    respuesta: Optional[str] = None
+    respondido_por_id: Optional[int] = None
+    respondido_por_nombre: Optional[str] = None
+    fecha_radicado: Optional[datetime] = None
+    fecha_respuesta: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ----------------- CHATBOT CON IA -----------------
+
+class ChatbotMessageRequest(BaseModel):
+    message: str = Field(..., min_length=1)
+    session_id: Optional[str] = None
+
+class ChatbotMessageResponse(BaseModel):
+    ok: bool = True
+    session_id: str
+    reply: str
+    source: str = "ai"  # 'ai' (OpenAI/Gemini) o 'local_knowledge'
+    suggestions: List[str] = []
+
+
+# ----------------- DASHBOARD Y ESTADÍSTICAS -----------------
+
+class DashboardStatsResponse(BaseModel):
+    total_usuarios: int
+    total_productos: int
+    total_servicios: int
+    total_ventas: int
+    facturacion_total: float
+    pqr_totales: int
+    pqr_pendientes: int
+    ventas_hoy: int
+    facturacion_hoy: float
+
+class ChartDataPoint(BaseModel):
+    label: str
+    valor: float
+    cantidad: Optional[int] = None
+
+class DashboardChartsResponse(BaseModel):
+    ventas_por_periodo: List[ChartDataPoint]
+    ingresos_por_periodo: List[ChartDataPoint]
+    productos_mas_vendidos: List[ChartDataPoint]
+    servicios_mas_solicitados: List[ChartDataPoint]
+

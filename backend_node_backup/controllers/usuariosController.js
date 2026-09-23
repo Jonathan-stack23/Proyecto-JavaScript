@@ -224,12 +224,24 @@ export const toggleEstadoUsuario = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existing] = await pool.query('SELECT id, estado FROM usuarios WHERE id = ?', [id]);
+    const [existing] = await pool.query(
+      `SELECT u.id, u.estado, u.rol_id, r.nombre as rol_nombre
+       FROM usuarios u JOIN roles r ON u.rol_id = r.id WHERE u.id = ?`,
+      [id]
+    );
     if (existing.length === 0) {
       return res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
     }
 
-    const nuevoEstado = existing[0].estado === 'activo' ? 'inactivo' : 'activo';
+    const usuario = existing[0];
+    if (usuario.rol_nombre === 'Administrador' || usuario.rol_id === 1) {
+      return res.status(400).json({
+        ok: false,
+        message: 'No puedes cambiar el estado de una cuenta de Administrador protegida.',
+      });
+    }
+
+    const nuevoEstado = usuario.estado === 'activo' ? 'inactivo' : 'activo';
     await pool.query('UPDATE usuarios SET estado = ? WHERE id = ?', [nuevoEstado, id]);
 
     return res.status(200).json({
@@ -247,9 +259,21 @@ export const deleteUsuario = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existing] = await pool.query('SELECT id FROM usuarios WHERE id = ?', [id]);
+    const [existing] = await pool.query(
+      `SELECT u.id, u.rol_id, r.nombre as rol_nombre
+       FROM usuarios u JOIN roles r ON u.rol_id = r.id WHERE u.id = ?`,
+      [id]
+    );
     if (existing.length === 0) {
       return res.status(404).json({ ok: false, message: 'Usuario no encontrado.' });
+    }
+
+    const usuario = existing[0];
+    if (usuario.rol_nombre === 'Administrador' || usuario.rol_id === 1) {
+      return res.status(400).json({
+        ok: false,
+        message: 'No puedes eliminar cuentas de Administrador protegidas.',
+      });
     }
 
     await pool.query('DELETE FROM usuarios WHERE id = ?', [id]);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -11,8 +11,10 @@ import About from './pages/About';
 import Products from './pages/Products';
 import Services from './pages/Services';
 import CartPage from './pages/CartPage';
+import PedidoConfirmadoPage from './pages/PedidoConfirmadoPage';
 import Login from './components/Login';
 import RecoverPassword from './components/RecoverPassword';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -21,7 +23,12 @@ import AdminProductos from './pages/admin/AdminProductos';
 import AdminServicios from './pages/admin/AdminServicios';
 import GestionPedidos from './pages/admin/GestionPedidos';
 import GestionCitas from './pages/admin/GestionCitas';
+import GestionVentas from './pages/admin/GestionVentas';
+import GestionFacturas from './pages/admin/GestionFacturas';
+import ReportesVentas from './pages/admin/ReportesVentas';
+import GestionPQR from './pages/admin/GestionPQR';
 import PerfilUsuario from './components/PerfilUsuario';
+import ChatbotWidget from './components/ChatbotWidget';
 
 import EmpleadoLayout from './pages/empleado/EmpleadoLayout';
 import { EmpleadoProductos, EmpleadoServicios, EmpleadoPerfil } from './pages/empleado/EmpleadoDashboard';
@@ -30,6 +37,7 @@ import EmpleadoDashboard from './pages/empleado/EmpleadoDashboard';
 import ClienteLayout from './pages/cliente/ClienteLayout';
 import { ClientePerfil, ClienteCompras } from './pages/cliente/ClienteDashboard';
 import ClienteDashboard from './pages/cliente/ClienteDashboard';
+import ClientePQR from './pages/cliente/ClientePQR';
 
 import './App.css';
 
@@ -259,11 +267,51 @@ function ContactPage() {
   );
 }
 
+function WhatsAppButtonWrapper() {
+  const location = useLocation();
+  const hideOnRoutes = [
+    '/login',
+    '/recuperar-contrasena',
+  ];
+  const shouldHide =
+    hideOnRoutes.includes(location.pathname) ||
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/empleado');
+
+  if (shouldHide) return null;
+
+  return (
+    <WhatsAppButton
+      phone="573001234567"
+      message="Hola! Me gustaría obtener más información sobre los productos y servicios de MiTienda."
+      label="Chatea con nosotros"
+    />
+  );
+}
+
+function ChatbotWidgetWrapper() {
+  const location = useLocation();
+  const hideOnRoutes = [
+    '/login',
+    '/recuperar-contrasena',
+  ];
+  const shouldHide =
+    hideOnRoutes.includes(location.pathname) ||
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/empleado') ||
+    location.pathname.startsWith('/cliente');
+
+  if (shouldHide) return null;
+
+  return <ChatbotWidget />;
+}
+
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/recuperar-contrasena" element={<RecoverPage />} />
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/recuperar-contrasena" element={<RecoverPage />} />
 
       {/* Rutas Públicas */}
       <Route
@@ -307,6 +355,23 @@ function AppRoutes() {
           </PublicLayout>
         }
       />
+      {/* RUTA DE PEDIDO CONFIRMADO */}
+      <Route
+        path="/pedido-confirmado"
+        element={
+          <PublicLayout>
+            <PedidoConfirmadoPage />
+          </PublicLayout>
+        }
+      />
+      <Route
+        path="/pedido-exitoso"
+        element={
+          <PublicLayout>
+            <PedidoConfirmadoPage />
+          </PublicLayout>
+        }
+      />
       <Route
         path="/contacto"
         element={
@@ -328,7 +393,11 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="pedidos" element={<GestionPedidos titulo="Gestión de Pedidos (Admin)" />} />
+        <Route path="ventas" element={<GestionVentas />} />
+        <Route path="facturas" element={<GestionFacturas />} />
+        <Route path="reportes" element={<ReportesVentas />} />
         <Route path="citas" element={<GestionCitas titulo="Gestión de Citas de Servicios (Admin)" />} />
+        <Route path="pqr" element={<GestionPQR />} />
         <Route path="usuarios" element={<AdminUsuarios />} />
         <Route path="productos" element={<AdminProductos />} />
         <Route path="servicios" element={<AdminServicios />} />
@@ -347,6 +416,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<EmpleadoDashboard />} />
         <Route path="pedidos" element={<GestionPedidos titulo="Gestión de Pedidos (Empleado)" />} />
+        <Route path="ventas" element={<GestionVentas />} />
         <Route path="citas" element={<GestionCitas titulo="Gestión de Citas de Servicios (Empleado)" />} />
         <Route path="productos" element={<EmpleadoProductos />} />
         <Route path="servicios" element={<EmpleadoServicios />} />
@@ -366,27 +436,29 @@ function AppRoutes() {
         <Route path="dashboard" element={<ClienteDashboard />} />
         <Route path="perfil" element={<ClientePerfil />} />
         <Route path="compras" element={<ClienteCompras />} />
+        <Route path="facturas" element={<GestionFacturas />} />
+        <Route path="pqr" element={<ClientePQR />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+      <WhatsAppButtonWrapper />
+      <ChatbotWidgetWrapper />
+    </>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <BrowserRouter>
-          <AppRoutes />
-          <WhatsAppButton
-            phone="573001234567"
-            message="Hola! Me gustaría obtener más información sobre los productos y servicios de MiTienda."
-            label="Chatea con nosotros"
-          />
-        </BrowserRouter>
-      </CartProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <CartProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </CartProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

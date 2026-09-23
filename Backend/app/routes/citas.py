@@ -138,7 +138,9 @@ def get_mis_citas(
 
 # -----------------------------------------------------------------------------
 # GET /api/citas
-# Retorna todas las citas registradas en el sistema, ordenadas por fecha.
+# Retorna las citas registradas en el sistema, ordenadas por fecha.
+# - Administrador: ve todas las citas.
+# - Empleado: solo ve las citas cuyos servicios le están asignados (servicio.usuario_id == empleado.id).
 # Requiere rol Administrador o Empleado.
 # -----------------------------------------------------------------------------
 @router.get("")
@@ -146,7 +148,15 @@ def get_todas_las_citas(
     current_user: Usuario = Depends(require_role("Administrador", "Empleado")),
     db: Session = Depends(get_db),
 ):
-    citas = db.query(CitaServicio).order_by(CitaServicio.created_at.desc()).all()
+    query = db.query(CitaServicio)
+
+    is_empleado = getattr(current_user, "rol_id", None) == 2 or (
+        current_user.rol and current_user.rol.nombre == "Empleado"
+    )
+    if is_empleado:
+        query = query.join(CitaServicio.servicio).filter(Servicio.usuario_id == current_user.id)
+
+    citas = query.order_by(CitaServicio.created_at.desc()).all()
     return {
         "ok": True,
         "total": len(citas),
@@ -158,6 +168,7 @@ def get_todas_las_citas(
 # PATCH /api/citas/{id}/estado
 # Actualiza el estado de una cita (ej: 'en revision' → 'revisado' → 'hecho').
 # El body debe incluir el nuevo estado explícitamente.
+# Si el usuario es Empleado, solo puede modificar citas de sus servicios asignados.
 # Requiere rol Administrador o Empleado.
 # -----------------------------------------------------------------------------
 @router.patch("/{id}/estado")
@@ -174,6 +185,16 @@ def update_estado_cita(
             detail={"ok": False, "message": "Cita no encontrada."},
         )
 
+    is_empleado = getattr(current_user, "rol_id", None) == 2 or (
+        current_user.rol and current_user.rol.nombre == "Empleado"
+    )
+    if is_empleado:
+        if not cita.servicio or cita.servicio.usuario_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"ok": False, "message": "No tienes permiso para modificar esta cita."},
+            )
+
     # Actualizar el estado de la cita con el valor enviado en el body
     cita.estado = data.estado
     db.commit()
@@ -184,3 +205,4 @@ def update_estado_cita(
         "message": f"Estado de la cita actualizado a '{data.estado}'.",
         "cita": serialize_cita(cita),
     }
+

@@ -1,5 +1,5 @@
-﻿import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Input from './Input'
 import Button from './Button'
 import RegisterModal from './RegisterModal'
@@ -255,6 +255,21 @@ function Login({ onNavigateRecover }) {
                   <line x1="23" y1="11" x2="17" y2="11"></line>
                 </svg>
                 Crear una cuenta
+              </Button>
+            </div>
+
+            <div className="mt-4 text-center">
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                onClick={() => navigate('/')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 12H5"></path>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Volver a inicio
               </Button>
             </div>
           </form>

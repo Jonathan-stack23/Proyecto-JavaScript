@@ -57,7 +57,7 @@ function Alert({ type, message, onClose }) {
    Main Component
 ──────────────────────────────────────────── */
 function PerfilUsuario({ backLink, backLabel = '← Volver al inicio' }) {
-  const { user, updateProfile, getProfile } = useAuth()
+  const { user, updateProfile, getProfile, isAuthenticated } = useAuth()
 
   /* ─── State: Datos personales ─── */
   const [form, setForm] = useState({
@@ -88,8 +88,9 @@ function PerfilUsuario({ backLink, backLabel = '← Volver al inicio' }) {
 
   /* ─── Load profile on mount ─── */
   useEffect(() => {
+    if (!isAuthenticated) return
     getProfile().catch(() => {})
-  }, []) // eslint-disable-line
+  }, [isAuthenticated]) // eslint-disable-line
 
   /* ─── Sync user into form ─── */
   useEffect(() => {

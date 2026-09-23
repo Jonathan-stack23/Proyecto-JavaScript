@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (data) => {
-    const res = await api.post('/usuarios/registro', data);
+    const res = await api.post('/auth/register', data);
     const { token: newToken, user: newUser } = res.data;
     setToken(newToken);
     setUser(newUser);
@@ -83,7 +83,25 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
+  const recoverSendCode = async (email) => {
+    const res = await api.post('/auth/recover/send-code', { email });
+    return res.data;
+  };
+
+  const recoverVerifyCode = async (email, codigo) => {
+    const res = await api.post('/auth/recover/verify-code', { email, codigo });
+    return res.data;
+  };
+
+  const recoverResetPassword = async (email, codigo, newPassword) => {
+    const res = await api.post('/auth/recover/reset-password', { email, codigo, newPassword });
+    return res.data;
+  };
+
   const getProfile = async () => {
+    if (!token) {
+      return { ok: false, message: 'No autenticado' };
+    }
     const res = await api.get('/auth/profile');
     if (res.data.ok && res.data.user) {
       const fullUser = {
@@ -141,6 +159,9 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         recoverPassword,
+        recoverSendCode,
+        recoverVerifyCode,
+        recoverResetPassword,
         getProfile,
         updateProfile,
         hasRole,

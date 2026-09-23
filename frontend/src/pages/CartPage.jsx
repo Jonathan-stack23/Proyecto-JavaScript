@@ -59,7 +59,7 @@ export default function CartPage() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
   const [pedidoExitoso, setPedidoExitoso] = useState(null);
-  const [datosAutocompletados, setDatosAutocompletados] = useState(false);
+  const [_datosAutocompletados, setDatosAutocompletados] = useState(false);
 
   // Limpiar cualquier residuo de datos antiguos de localStorage
   useEffect(() => {
@@ -184,6 +184,8 @@ export default function CartPage() {
           sessionStorage.setItem('mitienda_pedido_reciente', JSON.stringify(nuevoPedido));
         } catch {}
         clearCart();
+        navigate('/pedido-confirmado', { state: { pedido: nuevoPedido } });
+        return;
       } else {
         setError(res.data?.message || 'No se pudo procesar el pedido.');
       }
@@ -195,76 +197,102 @@ export default function CartPage() {
     }
   };
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
-      {/* MODAL / MENSAJE DESTACADO DE PEDIDO REALIZADO CORRECTAMENTE */}
-      {pedidoExitoso && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="relative bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-100 text-center space-y-6">
-            <div className="w-20 h-20 rounded-3xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
+  // Si se completó el pedido y la navegación no ha cambiado de ruta aún, mostrar la vista completa de pedido realizado
+  if (pedidoExitoso) {
+    const clienteNombre = pedidoExitoso.cliente_nombre || `${user?.nombre || ''} ${user?.apellido || ''}`.trim() || 'Cliente';
+    const totalVal = pedidoExitoso.total ?? total ?? 0;
+    const metodoPago = String(pedidoExitoso.metodo_pago || 'Efectivo contra entrega').replace(/_/g, ' ');
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div className="bg-white rounded-3xl shadow-custom-lg border border-gray-100 overflow-hidden">
+          {/* Header de éxito */}
+          <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 px-6 py-10 sm:px-10 sm:py-12 text-center text-white">
+            <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm text-white mx-auto flex items-center justify-center shadow-xl border border-white/30 mb-4">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-
-            <div>
-              <span className="inline-block px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-2">
-                ¡Pedido Realizado Correctamente!
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-text-heading">
-                ¡Gracias por tu compra, {pedidoExitoso.cliente_nombre}!
-              </h2>
-              <p className="text-sm text-gray-500 mt-2">
-                Tu orden ha sido registrada con el identificador <strong className="text-accent font-black">#{pedidoExitoso.id}</strong>.
-              </p>
-            </div>
-
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 text-left text-xs space-y-2.5">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Total a Pagar:</span>
-                <span className="font-extrabold text-base text-text-heading">{formatPrice(pedidoExitoso.total)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Método de Pago:</span>
-                <span className="font-semibold text-gray-700 capitalize">
-                  {pedidoExitoso.metodo_pago?.replace('_', ' ')}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Estado en tu Panel:</span>
-                <span className="font-bold px-2.5 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">
-                  En revisión
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-100 font-medium">
-              ✓ Este pedido ya se encuentra disponible en tu panel de cliente para que puedas ver su estado en tiempo real.
+            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-black bg-white/20 border border-white/30 mb-2 tracking-wide uppercase">
+              ✓ Pedido Realizado con Éxito
+            </span>
+            <h1 className="text-2xl sm:text-4xl font-black">
+              ¡Gracias por tu compra, {clienteNombre}!
+            </h1>
+            <p className="text-sm sm:text-base text-white/90 mt-2">
+              Tu orden ha sido registrada con el número{' '}
+              <strong className="bg-white/20 px-2.5 py-0.5 rounded-lg border border-white/30">
+                #{pedidoExitoso.id || '0000'}
+              </strong>
             </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/cliente/dashboard')}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-accent text-white font-bold text-sm shadow-md hover:bg-accent-dark transition-all cursor-pointer"
+          {/* Detalles del pedido */}
+          <div className="p-6 sm:p-10 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4 text-center">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total</p>
+                <p className="text-2xl font-black text-gray-900">{formatPrice(totalVal)}</p>
+              </div>
+              <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4 text-center">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Método de pago</p>
+                <p className="text-sm font-bold text-gray-800 capitalize">{metodoPago}</p>
+              </div>
+              <div className="rounded-2xl bg-gray-50 border border-gray-100 p-4 text-center">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Estado</p>
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800">
+                  ⏳ En revisión
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800 flex items-center gap-3">
+              <span className="text-lg">✓</span>
+              <p>Tu pedido ya se encuentra registrado y listo para ser procesado por nuestro equipo.</p>
+            </div>
+
+            {/* Botones de acción principales */}
+            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+              <Link
+                to="/"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-accent text-white font-extrabold text-base shadow-lg shadow-accent/25 hover:bg-accent-dark transition-all text-center"
               >
-                Ver mi pedido en el Panel
-              </button>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Volver al inicio
+              </Link>
+
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/cliente/dashboard')}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-4 rounded-2xl bg-emerald-600 text-white font-bold text-sm shadow-md hover:bg-emerald-700 transition-all cursor-pointer"
+                >
+                  Ver en mi Panel
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
                   setPedidoExitoso(null);
                   navigate('/productos');
                 }}
-                className="inline-flex items-center justify-center px-4 py-3.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-all cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-4 rounded-2xl border border-gray-200 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-all cursor-pointer"
               >
                 Seguir comprando
               </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
       {/* Encabezado del Carrito */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-text-heading flex items-center gap-3">

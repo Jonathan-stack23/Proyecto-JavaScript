@@ -1506,6 +1506,353 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "09. Módulo de Facturas (Quinto Avance)",
+      "item": [
+        {
+          "name": "01 - Listar Todas las Facturas (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Listado de facturas retornado\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "    pm.expect(jsonData).to.have.property(\"total\");",
+                  "    pm.expect(jsonData.facturas).to.be.an(\"array\");",
+                  "    if (jsonData.facturas.length > 0) {",
+                  "        pm.environment.set(\"facturaId\", jsonData.facturas[0].id);",
+                  "        pm.environment.set(\"ventaIdDeFactura\", jsonData.facturas[0].venta_id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas"]
+            },
+            "description": "Lista todas las facturas. Admin ve todas, cliente solo las suyas."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Listar Facturas con Filtro por Estado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Filtro de estado aplicado correctamente\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "    jsonData.facturas.forEach(function(f) {",
+                  "        pm.expect(f.estado).to.eql(\"pagada\");",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas?estado=pagada",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas"],
+              "query": [{ "key": "estado", "value": "pagada" }]
+            },
+            "description": "Lista facturas filtradas por estado."
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Obtener Factura por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Factura retornada con detalles completos\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "    pm.expect(jsonData.factura).to.be.an(\"object\");",
+                  "    pm.expect(jsonData.factura).to.have.property(\"numero_factura\");",
+                  "    pm.expect(jsonData.factura).to.have.property(\"detalles\");",
+                  "    pm.expect(jsonData.factura).to.have.property(\"total\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas/{{facturaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas", "{{facturaId}}"]
+            },
+            "description": "Obtiene el detalle completo de una factura por su ID."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Obtener Factura por Venta ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Factura de la venta retornada\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "    pm.expect(jsonData.factura).to.be.an(\"object\");",
+                  "    pm.expect(jsonData.factura.venta_id).to.eql(Number(pm.environment.get(\"ventaIdDeFactura\")));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas/venta/{{ventaIdDeFactura}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas", "venta", "{{ventaIdDeFactura}}"]
+            },
+            "description": "Retorna la factura asociada a una venta especificada por venta_id."
+          },
+          "response": []
+        },
+        {
+          "name": "05 - Cambiar Estado de Factura (Anular)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Estado de factura actualizado a anulada\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "    pm.expect(jsonData.factura.estado).to.eql(\"anulada\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"anulada\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas/{{facturaId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas", "{{facturaId}}", "estado"]
+            },
+            "description": "Cambia el estado de la factura a anulada. Solo admin/empleado."
+          },
+          "response": []
+        },
+        {
+          "name": "06 - Restaurar Estado de Factura (Pagada)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Estado de factura restaurado a pagada\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(true);",
+                  "    pm.expect(jsonData.factura.estado).to.eql(\"pagada\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"pagada\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas/{{facturaId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas", "{{facturaId}}", "estado"]
+            },
+            "description": "Restaura el estado de la factura a pagada."
+          },
+          "response": []
+        },
+        {
+          "name": "07 - Descargar Factura en PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Content-Type es application/pdf\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\");",
+                  "});",
+                  "",
+                  "pm.test(\"PDF tiene contenido válido (más de 500 bytes)\", function () {",
+                  "    pm.expect(pm.response.responseSize).to.be.above(500);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas/{{facturaId}}/pdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas", "{{facturaId}}", "pdf"]
+            },
+            "description": "Descarga la factura en formato PDF comercial profesional."
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Estado Inválido Rechazado (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Mensaje de error por estado inválido\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"estado\": \"estado_inexistente\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas/{{facturaId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas", "{{facturaId}}", "estado"]
+            },
+            "description": "Verifica que se rechace un estado inválido con 400."
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Factura No Encontrada (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Estado HTTP es 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta indica recurso no encontrado\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.ok).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/facturas/999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "facturas", "999999"]
+            },
+            "description": "Verifica que se retorne 404 para un ID de factura inexistente."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }

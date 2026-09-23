@@ -13,12 +13,12 @@ try:
     from ..database import get_db
     from ..models import Servicio, Usuario
     from ..schemas import ServicioCreate, ServicioUpdate, EstadoUpdateRequest
-    from ..dependencies import require_role
+    from ..dependencies import require_role, get_optional_current_user
 except (ImportError, ValueError):
     from app.database import get_db
     from app.models import Servicio, Usuario
     from app.schemas import ServicioCreate, ServicioUpdate, EstadoUpdateRequest
-    from app.dependencies import require_role
+    from app.dependencies import require_role, get_optional_current_user
 
 # Router con prefijo /servicios; agrupa los endpoints bajo el tag "Servicios"
 router = APIRouter(prefix="/servicios", tags=["Servicios"])
@@ -55,17 +55,26 @@ def serialize_servicio(s: Any) -> dict:
 # GET /api/servicios
 # Lista todos los servicios del catálogo.
 # Acepta el parámetro opcional ?activos=true para filtrar solo los activos.
-# Endpoint público — no requiere autenticación.
+# Si el usuario autenticado es Empleado (y no es consulta pública de activos),
+# solo retorna los servicios asignados a ese empleado (usuario_id == current_user.id).
 # -----------------------------------------------------------------------------
 @router.get("")
 def get_servicios(
     activos: Optional[str] = Query(None, description="Filtrar solo activos ('true')"),
+    current_user: Optional[Usuario] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     query = db.query(Servicio)
-    if activos and activos.lower() == "true":
+    if activos and isinstance(activos, str) and activos.lower() == "true":
         # Aplicar filtro para retornar únicamente servicios con estado 'activo'
         query = query.filter(Servicio.estado == "activo")
+    elif current_user and (
+        getattr(current_user, "rol_id", None) == 2
+        or (current_user.rol and current_user.rol.nombre == "Empleado")
+    ):
+        # El rol empleado solo puede ver los servicios que le están asignados
+        query = query.filter(Servicio.usuario_id == current_user.id)
+
     servicios = query.order_by(Servicio.created_at.desc()).all()
     return {
         "ok": True,
@@ -93,8 +102,7 @@ def get_servicio_by_id(id: int, db: Session = Depends(get_db)):
 # -----------------------------------------------------------------------------
 # POST /api/servicios
 # Crea un nuevo servicio en el catálogo.
-# Si no se especifica un usuario asignado (usuario_id), se asigna automáticamente
-# el empleado o administrador que está creando el servicio.
+# Si el usuario es Empleado, se asigna obligatoriamente a él mismo.
 # Requiere rol Administrador o Empleado.
 # -----------------------------------------------------------------------------
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -103,8 +111,11 @@ def create_servicio(
     current_user: Usuario = Depends(require_role("Administrador", "Empleado")),
     db: Session = Depends(get_db),
 ):
-    # Si no se especifica usuario asignado, usar el usuario logueado como responsable
-    assigned_user_id = data.usuario_id or current_user.id
+    is_empleado = getattr(current_user, "rol_id", None) == 2 or (
+        current_user.rol and current_user.rol.nombre == "Empleado"
+    )
+    # Si es empleado, se asigna forzosamente a sí mismo
+    assigned_user_id = current_user.id if is_empleado else (data.usuario_id or current_user.id)
 
     new_srv = Servicio(
         nombre=data.nombre.strip(),
@@ -147,6 +158,15 @@ def update_servicio(
             detail={"ok": False, "message": "Servicio no encontrado."},
         )
 
+    is_empleado = getattr(current_user, "rol_id", None) == 2 or (
+        current_user.rol and current_user.rol.nombre == "Empleado"
+    )
+    if is_empleado and srv.usuario_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"ok": False, "message": "No tienes permiso para modificar este servicio."},
+        )
+
     # Actualizar cada campo solo si fue incluido en la solicitud
     if data.nombre is not None:
         srv.nombre = data.nombre.strip()
@@ -162,7 +182,7 @@ def update_servicio(
         srv.imagen_url = data.imagen_url.strip()
     if data.estado is not None:
         srv.estado = data.estado
-    if data.usuario_id is not None:
+    if data.usuario_id is not None and not is_empleado:
         srv.usuario_id = data.usuario_id
 
     db.commit()
@@ -193,6 +213,15 @@ def toggle_estado_servicio(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"ok": False, "message": "Servicio no encontrado."},
+        )
+
+    is_empleado = getattr(current_user, "rol_id", None) == 2 or (
+        current_user.rol and current_user.rol.nombre == "Empleado"
+    )
+    if is_empleado and srv.usuario_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"ok": False, "message": "No tienes permiso para modificar este servicio."},
         )
 
     # Si se envía un estado explícito, usarlo; si no, alternar entre activo/inactivo
@@ -226,6 +255,15 @@ def delete_servicio(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"ok": False, "message": "Servicio no encontrado."},
+        )
+
+    is_empleado = getattr(current_user, "rol_id", None) == 2 or (
+        current_user.rol and current_user.rol.nombre == "Empleado"
+    )
+    if is_empleado and srv.usuario_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"ok": False, "message": "No tienes permiso para eliminar este servicio."},
         )
 
     db.delete(srv)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { formatPrice } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import ServiceDetailModal from '../components/ServiceDetailModal';
 import ScheduleServiceModal from '../components/ScheduleServiceModal';
 
@@ -8,6 +9,8 @@ const PLACEHOLDER_IMG =
   'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80';
 
 function Services() {
+  const { hasRole } = useAuth();
+  const esAdminOEmpleado = hasRole('Administrador') || hasRole('Empleado');
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -182,7 +185,7 @@ function Services() {
                     </div>
 
                     {/* BOTONES DE ACCIÓN: VER DETALLES Y AGENDAR SERVICIO */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className={`grid gap-3 ${esAdminOEmpleado ? 'grid-cols-1' : 'grid-cols-2'}`}>
                       <button
                         type="button"
                         onClick={() => handleAbrirDetalle(s)}
@@ -195,6 +198,7 @@ function Services() {
                         Ver detalles
                       </button>
 
+                      {!esAdminOEmpleado && (
                       <button
                         type="button"
                         onClick={() => handleAbrirAgendar(s)}
@@ -213,6 +217,7 @@ function Services() {
                         </svg>
                         Agendar
                       </button>
+                      )}
                     </div>
                   </div>
                 </article>
@@ -230,9 +235,8 @@ function Services() {
           setModalDetalleAbierto(false);
           setServicioDetalle(null);
         }}
-        onAgendar={(s) => {
-          handleAbrirAgendar(s);
-        }}
+        onAgendar={!esAdminOEmpleado ? (s) => { handleAbrirAgendar(s); } : null}
+        showAgendar={!esAdminOEmpleado}
       />
 
       {/* Modal Agendar Servicio */}

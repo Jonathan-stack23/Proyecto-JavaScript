@@ -6,12 +6,24 @@
 # =============================================================================
 
 from typing import Optional, Any
+from datetime import datetime, timezone
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 try:
     from ..database import get_db
-    from ..models import Pedido, PedidoItem, Producto, Usuario
+    from ..models import (
+        Pedido,
+        PedidoItem,
+        Producto,
+        Usuario,
+        Venta,
+        DetalleVenta,
+        Factura,
+        DetalleFactura,
+    )
     from ..schemas import PedidoCreate, EstadoUpdateRequest
     from ..dependencies import (
         get_current_user,
@@ -20,7 +32,16 @@ try:
     )
 except (ImportError, ValueError):
     from app.database import get_db
-    from app.models import Pedido, PedidoItem, Producto, Usuario
+    from app.models import (
+        Pedido,
+        PedidoItem,
+        Producto,
+        Usuario,
+        Venta,
+        DetalleVenta,
+        Factura,
+        DetalleFactura,
+    )
     from app.schemas import PedidoCreate, EstadoUpdateRequest
     from app.dependencies import (
         get_current_user,
@@ -38,6 +59,13 @@ router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 # (productos comprados) como una lista embebida dentro del pedido.
 # -----------------------------------------------------------------------------
 def serialize_pedido(p: Any) -> dict:
+    factura = None
+    venta = getattr(p, "venta", None)
+    if venta and getattr(venta, "factura", None):
+        factura = venta.factura
+    elif hasattr(p, "facturas") and p.facturas:
+        factura = p.facturas[0]
+
     return {
         "id": p.id,
         "usuario_id": p.usuario_id,
@@ -52,6 +80,10 @@ def serialize_pedido(p: Any) -> dict:
         "envio": float(p.envio) if p.envio is not None else 0.0,
         "total": float(p.total) if p.total is not None else 0.0,
         "estado": p.estado,
+        "venta_id": venta.id if venta else None,
+        "numero_venta": venta.numero_venta if venta else None,
+        "factura_id": factura.id if factura else None,
+        "numero_factura": factura.numero_factura if factura else None,
         "created_at": p.created_at.isoformat() if p.created_at else None,
         "updated_at": p.updated_at.isoformat() if p.updated_at else None,
         # Lista de items (productos) incluidos en el pedido
@@ -123,6 +155,8 @@ def create_pedido(
     envio_cost = data.envio or 0.0
     total_cost = calc_subtotal + envio_cost
 
+    now_dt = datetime.now(timezone.utc)
+
     # Crear y persistir el pedido principal
     new_pedido = Pedido(
         usuario_id=user_id,
@@ -137,12 +171,12 @@ def create_pedido(
         envio=envio_cost,
         total=total_cost,
         estado="en revision",
+        created_at=now_dt,
     )
     db.add(new_pedido)
-    db.commit()
-    db.refresh(new_pedido)
+    db.flush()
 
-    # Persistir cada item del pedido como registros PedidoItem vinculados al pedido
+    # Persistir cada item del pedido y descontar inventario
     for it in items_to_create:
         p_item = PedidoItem(
             pedido_id=new_pedido.id,
@@ -155,12 +189,108 @@ def create_pedido(
         )
         db.add(p_item)
 
+        # Descontar stock del producto en inventario
+        if it["producto_id"]:
+            prod = db.query(Producto).filter(Producto.id == it["producto_id"]).first()
+            if prod and prod.stock is not None:
+                prod.stock = max(0, prod.stock - it["cantidad"])
+
+    # -------------------------------------------------------------------------
+    # SINCRONIZACIÓN AUTOMÁTICA: Crear Venta y Factura comercial vinculadas
+    # -------------------------------------------------------------------------
+    subtotal_dec = Decimal(str(round(calc_subtotal, 2)))
+    # IVA 19% calculado sobre el subtotal comercial
+    impuestos_dec = (subtotal_dec * Decimal("0.19")).quantize(Decimal("0.01"))
+    total_dec = Decimal(str(round(total_cost, 2)))
+
+    # Generar número de venta consecutivo
+    max_venta_id = db.query(func.max(Venta.id)).scalar() or 0
+    numero_venta = f"VTA-{now_dt.year}-{(max_venta_id + 1):04d}"
+
+    # Obtener documento del cliente si existe
+    doc_cliente = getattr(data, "cliente_documento", None) or "222222222222"
+    if current_user and getattr(current_user, "numero_documento", None):
+        doc_cliente = current_user.numero_documento
+
+    nueva_venta = Venta(
+        numero_venta=numero_venta,
+        pedido_id=new_pedido.id,
+        cliente_id=user_id,
+        usuario_id=user_id,
+        cliente_nombre=new_pedido.cliente_nombre,
+        cliente_documento=doc_cliente,
+        cliente_email=new_pedido.cliente_email,
+        cliente_telefono=new_pedido.cliente_telefono,
+        direccion_entrega=new_pedido.direccion_envio,
+        ciudad=new_pedido.ciudad,
+        metodo_pago=new_pedido.metodo_pago,
+        subtotal=subtotal_dec,
+        descuento=Decimal("0.00"),
+        impuestos=impuestos_dec,
+        total=total_dec,
+        estado="completada",
+        notas=new_pedido.notas,
+        fecha_venta=now_dt,
+    )
+    db.add(nueva_venta)
+    db.flush()
+
+    for it in items_to_create:
+        det_v = DetalleVenta(
+            venta_id=nueva_venta.id,
+            tipo_item="producto",
+            producto_id=it["producto_id"],
+            nombre_item=it["nombre_producto"],
+            precio_unitario=Decimal(str(it["precio_unitario"])),
+            cantidad=it["cantidad"],
+            descuento=Decimal("0.00"),
+            subtotal=Decimal(str(it["subtotal"])),
+        )
+        db.add(det_v)
+
+    # Generar número de factura consecutivo
+    max_fac_id = db.query(func.max(Factura.id)).scalar() or 0
+    numero_factura = f"FAC-{now_dt.year}-{(max_fac_id + 1):04d}"
+
+    nueva_factura = Factura(
+        numero_factura=numero_factura,
+        venta_id=nueva_venta.id,
+        pedido_id=new_pedido.id,
+        cliente_id=user_id,
+        cliente_nombre=new_pedido.cliente_nombre,
+        cliente_documento=doc_cliente,
+        cliente_email=new_pedido.cliente_email,
+        cliente_telefono=new_pedido.cliente_telefono,
+        cliente_direccion=new_pedido.direccion_envio,
+        ciudad=new_pedido.ciudad,
+        subtotal=subtotal_dec,
+        impuestos=impuestos_dec,
+        descuento=Decimal("0.00"),
+        total=total_dec,
+        metodo_pago=new_pedido.metodo_pago,
+        estado="emitida",
+        fecha_emision=now_dt,
+    )
+    db.add(nueva_factura)
+    db.flush()
+
+    for it in items_to_create:
+        det_f = DetalleFactura(
+            factura_id=nueva_factura.id,
+            tipo_item="producto",
+            nombre_item=it["nombre_producto"],
+            precio_unitario=Decimal(str(it["precio_unitario"])),
+            cantidad=it["cantidad"],
+            subtotal=Decimal(str(it["subtotal"])),
+        )
+        db.add(det_f)
+
     db.commit()
     db.refresh(new_pedido)
 
     return {
         "ok": True,
-        "message": "Pedido creado exitosamente.",
+        "message": "Pedido y Factura creados exitosamente.",
         "pedido": serialize_pedido(new_pedido),
     }
 
@@ -258,6 +388,22 @@ def update_estado_pedido(
 
     # Actualizar el estado del pedido con el valor enviado en el body
     pedido.estado = data.estado
+
+    # Sincronizar estado en Venta y Factura si existen
+    if pedido.venta:
+        if data.estado == "cancelado":
+            pedido.venta.estado = "anulada"
+            if pedido.venta.factura:
+                pedido.venta.factura.estado = "anulada"
+        elif data.estado == "hecho":
+            pedido.venta.estado = "completada"
+            if pedido.venta.factura:
+                pedido.venta.factura.estado = "pagada"
+        elif data.estado in ["en revision", "revisado"]:
+            pedido.venta.estado = "completada"
+            if pedido.venta.factura:
+                pedido.venta.factura.estado = "emitida"
+
     db.commit()
     db.refresh(pedido)
 

@@ -56,6 +56,21 @@ function ClienteLayout() {
             </svg>
             Mis compras
           </NavLink>
+          <NavLink to="/cliente/facturas" className={navLinkClass}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+              <path d="M14 2v6h6"></path>
+              <path d="M9 13h6"></path>
+              <path d="M9 17h6"></path>
+            </svg>
+            Mis facturas
+          </NavLink>
+          <NavLink to="/cliente/pqr" className={navLinkClass}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            PQR
+          </NavLink>
         </nav>
         <div className="px-4 py-4 border-t border-white/10">
           <Link to="/" className="flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white transition-colors">

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCart, formatPrice } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import ProductDetailModal from '../components/ProductDetailModal';
 import { getProductImage } from '../utils/productImages';
 import api from '../services/api';
@@ -16,18 +17,27 @@ const PRODUCTOS_DEFAULT = [
 const FALLBACK_PRODUCTO_IMG =
   'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&h=600&q=80';
 
+const iconosCategoria = {
+  'Todas': '🛍️',
+  'Computadores': '💻',
+  'Celulares': '📱',
+  'Accesorios': '🎧',
+  'Monitores': '🖥️',
+};
+
 function Products() {
   const { addToCart } = useCart();
+  const { hasRole } = useAuth();
+  const esAdminOEmpleado = hasRole('Administrador') || hasRole('Empleado');
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [categoriaActiva, setCategoriaActiva] = useState('Todas');
   const [busqueda, setBusqueda] = useState('');
+  const [ordenarPor, setOrdenarPor] = useState('default');
 
-  // Modal detalles
   const [productoModal, setProductoModal] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
 
-  // Estado temporal de botones "Agregado"
   const [agregadosIds, setAgregadosIds] = useState({});
 
   useEffect(() => {
@@ -50,15 +60,43 @@ function Products() {
     cargarProductos();
   }, []);
 
-  const categorias = ['Todas', ...new Set(productos.map((p) => p.categoria).filter(Boolean))];
+  const categorias = useMemo(() => {
+    const cats = productos.map((p) => p.categoria).filter(Boolean);
+    return ['Todas', ...Array.from(new Set(cats))];
+  }, [productos]);
 
-  const productosFiltrados = productos.filter((p) => {
-    const coincideCategoria = categoriaActiva === 'Todas' || p.categoria === categoriaActiva;
-    const coincideBusqueda =
-      p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.descripcion?.toLowerCase().includes(busqueda.toLowerCase());
-    return coincideCategoria && coincideBusqueda;
-  });
+  const contarPorCategoria = useCallback((cat) => {
+    if (cat === 'Todas') return productos.length;
+    return productos.filter((p) => p.categoria === cat).length;
+  }, [productos]);
+
+  const productosFiltrados = useMemo(() => {
+    let resultado = productos.filter((p) => {
+      const coincideCategoria = categoriaActiva === 'Todas' || p.categoria === categoriaActiva;
+      const coincideBusqueda = !busqueda ||
+        p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        p.descripcion?.toLowerCase().includes(busqueda.toLowerCase());
+      return coincideCategoria && coincideBusqueda;
+    });
+
+    switch (ordenarPor) {
+      case 'precio_asc':
+        resultado = [...resultado].sort((a, b) => Number(a.precio) - Number(b.precio));
+        break;
+      case 'precio_desc':
+        resultado = [...resultado].sort((a, b) => Number(b.precio) - Number(a.precio));
+        break;
+      case 'nombre_az':
+        resultado = [...resultado].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+        break;
+      case 'stock_desc':
+        resultado = [...resultado].sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0));
+        break;
+      default:
+        break;
+    }
+    return resultado;
+  }, [productos, categoriaActiva, busqueda, ordenarPor]);
 
   const handleAgregar = (p) => {
     addToCart(p, 1);
@@ -116,27 +154,93 @@ function Products() {
         </div>
       </section>
 
-      {/* Filtro de categorías */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {categorias.map((cat) => (
+      {/* Filtro de categorías + Ordenamiento */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Botones de categorías */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none flex-1">
+            {categorias.map((cat) => {
+              const cantidad = contarPorCategoria(cat);
+              const estaActiva = categoriaActiva === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategoriaActiva(cat)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 cursor-pointer active:scale-95 ${
+                    estaActiva
+                      ? 'bg-gradient-to-r from-accent to-purple-600 text-white shadow-lg shadow-accent/30 hover:shadow-xl hover:shadow-accent/40'
+                      : 'bg-white text-gray-600 border border-gray-200 hover:border-accent/50 hover:bg-accent/5 hover:text-accent'
+                  }`}
+                >
+                  <span className="text-sm">{iconosCategoria[cat] || '🏷️'}</span>
+                  <span>{cat}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    estaActiva ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {cantidad}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Selector de ordenamiento */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label className="text-xs font-bold text-gray-500 whitespace-nowrap">Ordenar:</label>
+            <div className="relative">
+              <select
+                value={ordenarPor}
+                onChange={(e) => setOrdenarPor(e.target.value)}
+                className="appearance-none px-4 py-2.5 pr-10 rounded-2xl text-xs font-bold bg-white border border-gray-200 text-gray-700 cursor-pointer focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all hover:border-accent/50"
+              >
+                <option value="default">Relevancia</option>
+                <option value="precio_asc">Precio: Menor a Mayor</option>
+                <option value="precio_desc">Precio: Mayor a Menor</option>
+                <option value="nombre_az">Nombre (A-Z)</option>
+                <option value="stock_desc">Más Stock</option>
+              </select>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Barra informativa de resultados */}
+        <div className="flex items-center justify-between mt-3 mb-2 px-1">
+          <p className="text-[11px] font-semibold text-gray-400">
+            Mostrando <span className="text-accent font-black">{productosFiltrados.length}</span> de{' '}
+            <span className="text-text-heading font-black">{productos.length}</span> productos
+            {categoriaActiva !== 'Todas' && (
+              <> en <span className="text-purple-600 font-black">{categoriaActiva}</span></>
+            )}
+            {busqueda && (
+              <> para "<span className="text-indigo-600 font-black">{busqueda}</span>"</>
+            )}
+          </p>
+          {(categoriaActiva !== 'Todas' || busqueda || ordenarPor !== 'default') && (
             <button
-              key={cat}
-              onClick={() => setCategoriaActiva(cat)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                categoriaActiva === cat
-                  ? 'bg-accent text-white shadow-md'
-                  : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
-              }`}
+              type="button"
+              onClick={() => {
+                setCategoriaActiva('Todas');
+                setBusqueda('');
+                setOrdenarPor('default');
+              }}
+              className="text-[11px] font-bold text-accent hover:text-accent-dark transition-colors flex items-center gap-1"
             >
-              {cat}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              Limpiar filtros
             </button>
-          ))}
+          )}
         </div>
       </section>
 
       {/* Grid de Productos */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
         {cargando ? (
           <div className="text-center py-20">
             <div className="animate-spin w-10 h-10 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -234,7 +338,8 @@ function Products() {
                           </svg>
                         </button>
 
-                        {/* Botón agregar al carrito */}
+                        {/* Botón agregar al carrito — solo para Clientes */}
+                        {!esAdminOEmpleado && (
                         <button
                           onClick={() => handleAgregar(p)}
                           disabled={stock <= 0}
@@ -262,6 +367,7 @@ function Products() {
                             </>
                           )}
                         </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -280,7 +386,7 @@ function Products() {
           setModalAbierto(false);
           setProductoModal(null);
         }}
-        showAddToCart={true}
+        showAddToCart={!esAdminOEmpleado}
       />
     </div>
   );

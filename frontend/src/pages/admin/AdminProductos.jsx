@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import api from '../../services/api'
 import Button from '../../components/Button'
 import Input from '../../components/Input'
@@ -109,49 +109,249 @@ function useCRUD(entityName, apiPath) {
 
 function AdminProductos() {
   const crud = useCRUD('productos', '/productos')
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState('Todas')
+  const [filtroEstado, setFiltroEstado] = useState('Todos')
+  const [ordenarPor, setOrdenarPor] = useState('default')
 
   const handleSubmit = (e) => {
     e.preventDefault()
     crud.submit()
   }
 
+  const categorias = useMemo(() => {
+    const cats = crud.items.map((p) => p.categoria).filter(Boolean)
+    return ['Todas', ...Array.from(new Set(cats))]
+  }, [crud.items])
+
+  const itemsFiltrados = useMemo(() => {
+    let resultado = crud.items.filter((p) => {
+      const coincideBusqueda = !busqueda ||
+        p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        p.descripcion?.toLowerCase().includes(busqueda.toLowerCase()) ||
+        String(p.id).includes(busqueda)
+      const coincideCategoria = filtroCategoria === 'Todas' || p.categoria === filtroCategoria
+      const coincideEstado = filtroEstado === 'Todos' || p.estado === filtroEstado
+      return coincideBusqueda && coincideCategoria && coincideEstado
+    })
+
+    switch (ordenarPor) {
+      case 'precio_asc':
+        resultado = [...resultado].sort((a, b) => Number(a.precio) - Number(b.precio))
+        break
+      case 'precio_desc':
+        resultado = [...resultado].sort((a, b) => Number(b.precio) - Number(a.precio))
+        break
+      case 'stock_asc':
+        resultado = [...resultado].sort((a, b) => Number(a.stock || 0) - Number(b.stock || 0))
+        break
+      case 'stock_desc':
+        resultado = [...resultado].sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0))
+        break
+      case 'nombre_az':
+        resultado = [...resultado].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+        break
+      default:
+        resultado = [...resultado].sort((a, b) => Number(b.id) - Number(a.id))
+        break
+    }
+    return resultado
+  }, [crud.items, busqueda, filtroCategoria, filtroEstado, ordenarPor])
+
+  const hayFiltrosActivos = busqueda !== '' || filtroCategoria !== 'Todas' || filtroEstado !== 'Todos' || ordenarPor !== 'default'
+
   return (
     <div className="space-y-5">
       {crud.toast.msg && (
-        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${
-          crud.toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium animate-[fadeIn_0.2s_ease-out] ${
+          crud.toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
         }`}>{crud.toast.msg}</div>
       )}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-text-heading">Gestión de Productos</h1>
-          <p className="text-sm text-gray-500">Total: {crud.items.length} registros</p>
+
+      {/* Header con título y acciones */}
+      <div className="bg-gradient-to-r from-emerald-500 via-teal-600 to-cyan-600 rounded-3xl p-6 md:p-8 text-white shadow-custom-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold">Gestión de Productos</h1>
+              <p className="text-sm text-white/80 mt-0.5">
+                Administra el inventario: {crud.items.length} productos registrados ·{' '}
+                <span className="font-bold">{itemsFiltrados.length}</span> visibles
+              </p>
+            </div>
+          </div>
+          <Button variant="primary" size="md" onClick={() => crud.openCreate()} className="!bg-white !text-emerald-700 hover:!bg-emerald-50 shadow-lg !px-5 !py-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nuevo producto
+          </Button>
         </div>
-        <Button variant="primary" size="md" onClick={() => crud.openCreate()}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Nuevo producto
-        </Button>
       </div>
 
+      {/* Panel de Filtros */}
+      <div className="bg-white rounded-2xl shadow-custom-md border border-gray-100 p-5 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          {/* Buscador */}
+          <div className="relative flex-1 min-w-0 lg:max-w-md">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5" className="absolute left-3.5 top-1/2 -translate-y-1/2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, descripción o ID..."
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+            />
+            {busqueda && (
+              <button
+                type="button"
+                onClick={() => setBusqueda('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Filtro categoría */}
+          <div className="relative min-w-[180px]">
+            <select
+              value={filtroCategoria}
+              onChange={(e) => setFiltroCategoria(e.target.value)}
+              className="appearance-none w-full px-4 py-2.5 pr-10 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-700 cursor-pointer focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+            >
+              {categorias.map((cat) => (
+                <option key={cat} value={cat}>{cat === 'Todas' ? '📦 Todas las categorías' : `🏷️ ${cat}`}</option>
+              ))}
+            </select>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+
+          {/* Filtro estado */}
+          <div className="relative min-w-[160px]">
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="appearance-none w-full px-4 py-2.5 pr-10 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-700 cursor-pointer focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+            >
+              <option value="Todos">📋 Todos los estados</option>
+              <option value="activo">✅ Activos</option>
+              <option value="inactivo">⛔ Inactivos</option>
+            </select>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+
+          {/* Ordenamiento */}
+          <div className="relative min-w-[200px]">
+            <select
+              value={ordenarPor}
+              onChange={(e) => setOrdenarPor(e.target.value)}
+              className="appearance-none w-full px-4 py-2.5 pr-10 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-700 cursor-pointer focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+            >
+              <option value="default">🔄 Más recientes</option>
+              <option value="nombre_az">🔤 Nombre (A-Z)</option>
+              <option value="precio_asc">💰 Precio ↑</option>
+              <option value="precio_desc">💰 Precio ↓</option>
+              <option value="stock_asc">📦 Stock ↓</option>
+              <option value="stock_desc">📦 Stock ↑</option>
+            </select>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+
+          {/* Botón limpiar filtros */}
+          {hayFiltrosActivos && (
+            <button
+              type="button"
+              onClick={() => {
+                setBusqueda('')
+                setFiltroCategoria('Todas')
+                setFiltroEstado('Todos')
+                setOrdenarPor('default')
+              }}
+              className="px-4 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-100 text-xs font-bold hover:bg-red-100 transition-colors flex items-center gap-2 shrink-0"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              Limpiar
+            </button>
+          )}
+        </div>
+
+        {/* Chips informativos de filtros activos */}
+        {hayFiltrosActivos && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Filtros:</span>
+            {busqueda && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-semibold border border-indigo-100">
+                🔍 "{busqueda}"
+              </span>
+            )}
+            {filtroCategoria !== 'Todas' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-[11px] font-semibold border border-purple-100">
+                🏷️ {filtroCategoria}
+              </span>
+            )}
+            {filtroEstado !== 'Todos' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-100">
+                {filtroEstado === 'activo' ? '✅' : '⛔'} {filtroEstado}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Tabla de productos */}
       <div className="bg-white rounded-2xl shadow-custom-md border border-gray-100 overflow-hidden">
         {crud.loading ? (
-          <div className="p-10 flex justify-center"><div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin" /></div>
+          <div className="p-10 flex justify-center"><div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>
+        ) : itemsFiltrados.length === 0 ? (
+          <div className="p-12 text-center space-y-3">
+            <div className="w-16 h-16 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
+            <h3 className="font-bold text-text-heading text-lg">
+              {crud.items.length === 0 ? 'Sin productos registrados' : 'No hay resultados'}
+            </h3>
+            <p className="text-xs text-gray-400 max-w-sm mx-auto">
+              {crud.items.length === 0
+                ? 'Crea tu primer producto usando el botón "Nuevo producto".'
+                : 'Prueba modificando los filtros o términos de búsqueda.'}
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-100">
                 <tr>
                   {['ID','Producto','Categoría','Precio','Stock','Estado','Acciones'].map(h => (
-                    <th key={h} className="text-left font-semibold text-gray-600 px-5 py-3 whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left font-bold text-gray-600 px-5 py-3.5 whitespace-nowrap text-[11px] uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {crud.items.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-10 text-gray-400">Sin productos registrados</td></tr>
-                ) : crud.items.map(p => (
+                {itemsFiltrados.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50/50">
                     <td className="px-5 py-3 text-gray-500">#{p.id}</td>
                     <td className="px-5 py-3">

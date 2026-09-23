@@ -1,10 +1,10 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { formatPrice } from '../context/CartContext';
 
 const PLACEHOLDER_IMG =
   'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80';
 
-export default function ServiceDetailModal({ servicio, isOpen, onClose, onAgendar }) {
+export default function ServiceDetailModal({ servicio, isOpen, onClose, onAgendar, showAgendar = true }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
@@ -134,6 +134,7 @@ export default function ServiceDetailModal({ servicio, isOpen, onClose, onAgenda
             >
               Cerrar
             </button>
+            {showAgendar && (
             <button
               onClick={() => {
                 onClose();
@@ -150,6 +151,7 @@ export default function ServiceDetailModal({ servicio, isOpen, onClose, onAgenda
               </svg>
               Agendar este servicio ahora
             </button>
+            )}
           </div>
         </div>
       </div>

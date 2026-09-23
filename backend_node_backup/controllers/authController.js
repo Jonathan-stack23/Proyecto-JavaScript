@@ -1,6 +1,113 @@
-﻿import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 import pool from '../config/db.js';
+
+const generarCodigo = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+const crearTransporterSmtp = () => {
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+  if (!smtpUser || !smtpPass) return null;
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: { user: smtpUser, pass: smtpPass },
+  });
+};
+
+const enviarCorreoRecuperacion = async (destinatario, codigo, nombre) => {
+  const transporter = crearTransporterSmtp();
+  const remitente = process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@mitienda.com';
+  const asunto = process.env.SMTP_SUBJECT || 'Código de recuperación - MiTienda';
+
+  const cuerpoHtml = `
+  <html>
+    <body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+      <div style="max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 30px;">
+        <h2 style="color: #6d28d9; margin-top: 0;">Hola ${nombre || 'usuario'} 👋</h2>
+        <p style="color: #374151;">Recibimos una solicitud para recuperar tu contraseña de MiTienda.</p>
+        <p style="color: #374151;">Utiliza el siguiente código de verificación:</p>
+        <div style="text-align: center; margin: 25px 0;">
+          <span style="display: inline-block; padding: 14px 32px; font-size: 28px; font-weight: bold; letter-spacing: 8px; color: #ffffff; background: linear-gradient(90deg, #6d28d9, #a855f7); border-radius: 10px;">
+            ${codigo}
+          </span>
+        </div>
+        <p style="color: #374151;">Este código es válido por <strong>15 minutos</strong> y solo puede usarse una vez.</p>
+        <p style="color: #9ca3af; font-size: 12px;">Si no solicitaste este cambio, ignora este correo.</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+        <p style="color: #6b7280; font-size: 12px; text-align: center;">© 2026 MiTienda - Tecnología y más</p>
+      </div>
+    </body>
+  </html>`;
+
+  const cuerpoTexto =
+    `Hola ${nombre || 'usuario'}!\n\n` +
+    `Tu código de recuperación para MiTienda es: ${codigo}\n` +
+    `Válido por 15 minutos.\n\n` +
+    `Si no solicitaste este cambio, ignora este correo.`;
+
+  let enviado = false;
+  let modoDesarrollo = false;
+
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: remitente,
+        to: destinatario,
+        subject: asunto,
+        text: cuerpoTexto,
+        html: cuerpoHtml,
+      });
+      enviado = true;
+      console.log(`[EMAIL] Código de recuperación enviado a ${destinatario}.`);
+    } catch (e) {
+      console.warn(`[EMAIL] Falló el envío SMTP a ${destinatario}:`, e.message);
+      enviado = false;
+      modoDesarrollo = true;
+    }
+  } else {
+    modoDesarrollo = true;
+  }
+
+  if (modoDesarrollo || !enviado) {
+    console.log('='.repeat(60));
+    console.log(`[MODO DESARROLLO] Código de recuperación para ${destinatario} (${nombre}):`);
+    console.log(`         CÓDIGO =>  ${codigo}  (válido 15 min)`);
+    console.log('='.repeat(60));
+    enviado = true;
+    modoDesarrollo = true;
+  }
+
+  return { enviado, modoDesarrollo };
+};
+
+const validarCodigoActivo = async (email, codigo) => {
+  const correo = String(email).trim().toLowerCase();
+  const [rows] = await pool.query(
+    `SELECT * FROM codigos_recuperacion
+     WHERE LOWER(email) = ? AND codigo = ? AND usado = FALSE
+     ORDER BY created_at DESC LIMIT 1`,
+    [correo, String(codigo).trim()]
+  );
+  if (rows.length === 0) {
+    const error = new Error('Código inválido. Verifica e intenta nuevamente.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const registro = rows[0];
+  const ahora = new Date();
+  const expira = new Date(registro.expira_en);
+  if (expira < ahora) {
+    const error = new Error('El código ha expirado. Solicita uno nuevo.');
+    error.statusCode = 400;
+    throw error;
+  }
+  return registro;
+};
 
 export const checkEmailDisponiblePublic = async (req, res) => {
   try {
@@ -214,14 +321,102 @@ export const recoverPassword = async (req, res) => {
 
     return res.status(200).json({
       ok: true,
-      message: 'ContraseÃ±a actualizada exitosamente.',
+      message: '¡Tu contraseña ha sido actualizada! Ya puedes iniciar sesión con tu nueva contraseña.',
     });
   } catch (error) {
-    console.error('Error en recuperaciÃ³n:', error);
+    console.error('Error en recuperación:', error);
     return res.status(500).json({
       ok: false,
       message: 'Error interno del servidor al actualizar contraseÃ±a.',
     });
+  }
+};
+
+export const recoverSendCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ ok: false, message: 'El correo es obligatorio.' });
+    }
+    const correo = String(email).trim().toLowerCase();
+    const codigo = generarCodigo();
+    const expiraEn = new Date(Date.now() + 15 * 60 * 1000);
+
+    await pool.query(
+      `INSERT INTO codigos_recuperacion (email, codigo, expira_en, usado) VALUES (?, ?, ?, FALSE)`,
+      [correo, codigo, expiraEn]
+    );
+
+    const [userRows] = await pool.query('SELECT nombre FROM usuarios WHERE LOWER(email) = ?', [correo]);
+    const nombreUsuario = userRows.length > 0 ? userRows[0].nombre : 'usuario';
+
+    const { enviado } = await enviarCorreoRecuperacion(correo, codigo, nombreUsuario);
+
+    const emailMasked = userRows.length > 0
+      ? correo[0] + '***' + correo.split('@')[0].slice(-1) + '@' + correo.split('@').slice(-1)[0]
+      : null;
+
+    return res.status(200).json({
+      ok: enviado,
+      message: enviado
+        ? 'Si el correo está registrado, recibirás un código de verificación en breve. Revisa tu bandeja de entrada (y carpeta de spam).'
+        : 'No pudimos enviar el correo en este momento. Por favor intenta de nuevo más tarde.',
+      email_masked: emailMasked,
+    });
+  } catch (error) {
+    console.error('Error en recoverSendCode:', error);
+    return res.status(500).json({ ok: false, message: 'Error interno del servidor al enviar el código.' });
+  }
+};
+
+export const recoverVerifyCode = async (req, res) => {
+  try {
+    const { email, codigo } = req.body;
+    await validarCodigoActivo(email, codigo);
+    return res.status(200).json({
+      ok: true,
+      message: 'Código verificado correctamente. Ahora puedes establecer tu nueva contraseña.',
+    });
+  } catch (error) {
+    console.error('Error en recoverVerifyCode:', error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ ok: false, message: error.message || 'Error al verificar el código.' });
+  }
+};
+
+export const recoverResetPassword = async (req, res) => {
+  try {
+    const { email, codigo, newPassword } = req.body;
+    const correo = String(email).trim().toLowerCase();
+
+    if (!newPassword) {
+      return res.status(400).json({ ok: false, message: 'La nueva contraseña es obligatoria.' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ ok: false, message: 'La contraseña debe tener al menos 8 caracteres.' });
+    }
+
+    const [userRows] = await pool.query('SELECT id FROM usuarios WHERE LOWER(email) = ?', [correo]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ ok: false, message: 'No se encontró ningún usuario con ese correo electrónico.' });
+    }
+
+    const registro = await validarCodigoActivo(correo, codigo);
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await pool.query('UPDATE codigos_recuperacion SET usado = TRUE WHERE id = ?', [registro.id]);
+    await pool.query('UPDATE usuarios SET password = ? WHERE LOWER(email) = ?', [hashedPassword, correo]);
+
+    return res.status(200).json({
+      ok: true,
+      message: '¡Tu contraseña ha sido actualizada! Ya puedes iniciar sesión con tu nueva contraseña.',
+    });
+  } catch (error) {
+    console.error('Error en recoverResetPassword:', error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ ok: false, message: error.message || 'Error al actualizar la contraseña.' });
   }
 };
 

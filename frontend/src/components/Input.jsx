@@ -12,6 +12,8 @@ function Input({
   maxLength,
   icon,
   required = false,
+  className = '',
+  ...rest
 }) {
   const [showPassword, setShowPassword] = useState(false)
   const isPasswordType = type === 'password'
@@ -23,7 +25,7 @@ function Input({
   }
 
   return (
-    <div className="mb-4 w-full">
+    <div className={`mb-4 w-full ${className}`}>
       {label && (
         <label
           htmlFor={name}
@@ -40,6 +42,7 @@ function Input({
           </div>
         )}
         <input
+          {...rest}
           id={name}
           name={name}
           type={isPasswordType ? (showPassword ? 'text' : 'password') : type}

@@ -103,7 +103,8 @@ function Header() {
 
           {/* Acciones Derecha (Carrito + Usuario/Login) */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* BOTÓN CARRITO (Desktop y Móvil) */}
+            {/* BOTÓN CARRITO (Desktop y Móvil) — solo para Clientes y no autenticados */}
+            {!hasRole('Administrador') && !hasRole('Empleado') && (
             <Link
               to={isAuthenticated ? "/carrito" : "/login?redirect=/carrito"}
               className="relative p-2.5 sm:px-3.5 sm:py-2 rounded-xl text-gray-700 hover:text-accent hover:bg-gray-100 transition-all flex items-center gap-2 border border-gray-100 shadow-sm"
@@ -125,6 +126,7 @@ function Header() {
                 Carrito
               </span>
             </Link>
+            )}
 
             <div className="hidden md:flex items-center gap-3">
               {isAuthenticated && user ? (
@@ -221,6 +223,7 @@ function Header() {
               Servicios
             </NavLink>
 
+            {!hasRole('Administrador') && !hasRole('Empleado') && (
             <NavLink
               to={isAuthenticated ? "/carrito" : "/login?redirect=/carrito"}
               onClick={() => setMenuAbierto(false)}
@@ -244,6 +247,7 @@ function Header() {
                 </span>
               )}
             </NavLink>
+            )}
 
             <NavLink
               to="/quienes-somos"

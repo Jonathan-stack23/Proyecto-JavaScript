@@ -289,6 +289,17 @@ def toggle_estado_usuario(
             detail={"ok": False, "message": "Usuario no encontrado."},
         )
 
+    # Restricción de seguridad: NINGUNA cuenta de Administrador puede cambiar de estado
+    es_admin_objetivo = (user.rol_id == 1) or (user.rol and user.rol.nombre == "Administrador")
+    if es_admin_objetivo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "ok": False,
+                "message": "No puedes cambiar el estado de una cuenta de Administrador protegida.",
+            },
+        )
+
     # Restricción de seguridad: el administrador no puede desactivarse a sí mismo
     if user.id == current_user.id:
         raise HTTPException(
@@ -318,7 +329,8 @@ def toggle_estado_usuario(
 # -----------------------------------------------------------------------------
 # DELETE /api/usuarios/{id}
 # Elimina permanentemente un usuario de la base de datos.
-# Impide que el administrador se elimine a sí mismo.
+# Impide eliminar cualquier cuenta con rol Administrador y que el admin
+# no pueda borrarse a sí mismo.
 # Solo accesible por Administradores.
 # -----------------------------------------------------------------------------
 @router.delete("/{id}")
@@ -332,6 +344,17 @@ def delete_usuario(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"ok": False, "message": "Usuario no encontrado."},
+        )
+
+    # Restricción de seguridad: NINGUNA cuenta de Administrador se puede eliminar
+    es_admin_objetivo = (user.rol_id == 1) or (user.rol and user.rol.nombre == "Administrador")
+    if es_admin_objetivo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "ok": False,
+                "message": "No puedes eliminar cuentas de Administrador protegidas.",
+            },
         )
 
     # Restricción de seguridad: el administrador no puede eliminarse a sí mismo

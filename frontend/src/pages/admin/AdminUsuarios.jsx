@@ -156,24 +156,34 @@ function AdminUsuarios() {
     }
   }
 
-  const toggleEstado = async (id) => {
+  const esAdmin = (u) => u && (u.rol_id === 1 || u.rol_nombre === 'Administrador' || (u.rol && u.rol.nombre === 'Administrador'));
+
+  const toggleEstado = async (id, usuario) => {
+    if (esAdmin(usuario)) {
+      showToast('error', 'No puedes cambiar el estado de cuentas de Administrador protegidas.')
+      return
+    }
     try {
       const res = await api.patch(`/usuarios/${id}/estado`)
       setUsuarios(prev => prev.map(u => u.id === id ? { ...u, estado: res.data.estado } : u))
       showToast('success', `Estado cambiado a ${res.data.estado}.`)
     } catch (e) {
-      showToast('error', 'Error cambiando estado.')
+      showToast('error', e.response?.data?.message || e.response?.data?.detail?.message || 'Error cambiando estado.')
     }
   }
 
-  const borrar = async (id) => {
+  const borrar = async (id, usuario) => {
+    if (esAdmin(usuario)) {
+      showToast('error', 'No puedes eliminar cuentas de Administrador protegidas.')
+      return
+    }
     if (!window.confirm('¿Estás seguro de eliminar este usuario?')) return
     try {
       await api.delete(`/usuarios/${id}`)
       setUsuarios(prev => prev.filter(u => u.id !== id))
       showToast('success', 'Usuario eliminado.')
     } catch (e) {
-      showToast('error', 'Error eliminando.')
+      showToast('error', e.response?.data?.message || e.response?.data?.detail?.message || 'Error eliminando.')
     }
   }
 
@@ -236,37 +246,65 @@ function AdminUsuarios() {
                     <td className="px-5 py-3 text-gray-600">{u.email}</td>
                     <td className="px-5 py-3">{u.telefono}</td>
                     <td className="px-5 py-3 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
                         u.rol_nombre === 'Administrador' ? 'bg-purple-100 text-purple-700'
                         : u.rol_nombre === 'Empleado' ? 'bg-blue-100 text-blue-700'
                         : 'bg-gray-100 text-gray-700'
-                      }`}>{u.rol_nombre}</span>
+                      }`}>
+                        {u.rol_nombre === 'Administrador' && <span>🛡️</span>}
+                        {u.rol_nombre}
+                      </span>
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap">
-                      <button onClick={() => toggleEstado(u.id)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
-                          u.estado === 'activo'
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : 'bg-red-100 text-red-700 hover:bg-red-200'
-                        }`}>{u.estado}</button>
+                      {esAdmin(u) ? (
+                        <span
+                          title="Cuenta de Administrador protegida — no se puede cambiar el estado"
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold cursor-not-allowed ${
+                            u.estado === 'activo'
+                              ? 'bg-green-100 text-green-700 opacity-80'
+                              : 'bg-red-100 text-red-700 opacity-80'
+                          }`}
+                        >
+                          🔒 {u.estado}
+                        </span>
+                      ) : (
+                        <button onClick={() => toggleEstado(u.id, u)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                            u.estado === 'activo'
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-red-100 text-red-700 hover:bg-red-200'
+                          }`}>{u.estado}</button>
+                      )}
                     </td>
                     <td className="px-5 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <button onClick={() => openEdit(u)}
-                          className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Editar">
+                          className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer" title="Editar">
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                           </svg>
                         </button>
-                        <button onClick={() => borrar(u.id)}
-                          className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors" title="Eliminar">
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
-                            <path d="M10 11v6M14 11v6"></path>
-                          </svg>
-                        </button>
+                        {esAdmin(u) ? (
+                          <span
+                            title="Cuenta de Administrador protegida — no se puede eliminar"
+                            className="p-2 rounded-lg text-red-300 bg-red-50/50 cursor-not-allowed"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6">
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                          </span>
+                        ) : (
+                          <button onClick={() => borrar(u.id, u)}
+                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors cursor-pointer" title="Eliminar">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"></path>
+                              <path d="M10 11v6M14 11v6"></path>
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
