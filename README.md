@@ -8,6 +8,9 @@
 
 > **Proyecto Final SENA — Ficha 3406204**
 > Instructor: Jhan Hader Muñoz | Autor: Jonathan Martinez
+> links:
+> backend:https://proyecto-javascript-production.up.railway.app/
+> frotned:https://resilient-forgiveness-production-7802.up.railway.app/
 
 Plataforma web completa de comercio electrónico y gestión de servicios con autenticación por roles, carrito de compras, facturación electrónica en PDF, reportes en Excel, chatbot con IA y panel administrativo multirol.
 
