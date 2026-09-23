@@ -202,18 +202,24 @@ try:
 
         db.commit()
 
+    # Asegurar que el directorio Backend (padre de app/) esté en sys.path
+    # para que seed.py y migrate_quinto_avance.py sean importables en producción
+    _backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if _backend_dir not in sys.path:
+        sys.path.insert(0, _backend_dir)
+
     db_session = SessionLocal()
     try:
         if db_session.query(Usuario).count() == 0:
-            from seed import run_seed
+            from seed import run_seed  # noqa: PLC0415
             logger.info("[DB] Semilla inicial de usuarios, roles y catálogo no encontrada. Poblando datos base.")
             run_seed()
         if db_session.query(Venta).count() == 0 and db_session.query(Factura).count() == 0:
-            from migrate_quinto_avance import run_migration
+            from migrate_quinto_avance import run_migration  # noqa: PLC0415
             logger.info("[DB] No se encontraron ventas/facturas. Poblando datos del quinto avance.")
             run_migration()
         if db_session.query(PQR).count() == 0:
-            from migrate_quinto_avance import run_migration
+            from migrate_quinto_avance import run_migration  # noqa: PLC0415
             logger.info("[DB] No se encontraron PQRs. Poblando registros de soporte.")
             run_migration()
         # Sincronizar compras y facturas
@@ -238,6 +244,9 @@ app = FastAPI(
 )
 
 # Configuración de CORS para permitir comunicación fluida con React Vite
+# En producción Railway, se lee FRONTEND_URL desde variables de entorno
+_frontend_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -249,9 +258,20 @@ origins = [
     "http://127.0.0.1:8000",
 ]
 
+# Agregar la URL de producción del frontend (Railway) si está configurada
+if _frontend_url and _frontend_url not in origins:
+    origins.append(_frontend_url)
+    # También permitir variante con www si aplica
+    if _frontend_url.startswith("https://") and not _frontend_url.startswith("https://www."):
+        origins.append(_frontend_url.replace("https://", "https://www.", 1))
+    logger.info(f"[CORS] Frontend URL de producción agregada: {_frontend_url}")
+
+# En producción usamos lista explícita de orígenes; en desarrollo local se permite todo
+_allow_origins = origins if _frontend_url else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite cualquier origen en desarrollo local
+    allow_origins=_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
